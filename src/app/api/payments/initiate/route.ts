@@ -88,6 +88,6 @@ export async function POST(req: Request) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }
     console.error('[PAYMENT_INITIATE]', error);
-    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Payment initiation failed', 500);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Payment initiation failed', 500);
   }
 }
