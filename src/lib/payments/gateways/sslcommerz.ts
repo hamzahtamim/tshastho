@@ -14,6 +14,9 @@ export const sslcommerzGateway: PaymentGateway = {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     if (!storeId || !storePass) {
+    if (process.env.NODE_ENV === 'production' && process.env.PAYMENTS_MOCK_MODE !== 'true') {
+      throw new Error('FATAL: Missing SSLCommerz credentials in production environment. Mock mode is disabled.');
+    }
       // DEV MOCK: return a fake gateway URL so we can test the flow without live keys
       console.warn('[SSLCOMMERZ] Missing credentials — using mock mode');
       return {
