@@ -25,5 +25,8 @@ export async function getCurrentUser() {
     },
   });
 
+  if (!user || user.status !== 'APPROVED') {
+    return null;
+  }
   return user;
 }
