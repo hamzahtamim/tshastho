@@ -8,10 +8,9 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const tranId = formData.get('tran_id') as string | null;
     if (tranId) {
-      await prisma.payment.update({
-        where: { id: tranId },
-        data: { status: 'FAILED', failureReason: 'Gateway reported failure' },
-      }).catch(() => {});
+      // SECURITY FIX (P1-10): Do not blindly trust fail callbacks. 
+      // The IPN route will securely update the payment status to FAILED.
+      console.log(`[SSLCOMMERZ_FAIL] Fail callback received for ${tranId}. Awaiting IPN to update status.`);
     }
   } catch {}
   return NextResponse.redirect(`${appUrl}/payment/failed`);

@@ -23,6 +23,12 @@ export async function POST(req: Request) {
     const data = schema.parse(body);
 
     // If orderId provided, verify ownership & get amount
+    if (!data.orderId && data.purpose !== 'WALLET_TOPUP') {
+      return errorResponse(ErrorCodes.VALIDATION_ERROR, 'A valid orderId is required for this payment type.', 400);
+    }
+    if (data.purpose === 'WALLET_TOPUP' && data.amount > 50000) {
+      return errorResponse(ErrorCodes.VALIDATION_ERROR, 'Top-up amount exceeds the allowed limit of 50,000.', 400);
+    }
     let orderAmount = data.amount;
     if (data.orderId) {
       const order = await prisma.order.findUnique({ where: { id: data.orderId } });
