@@ -5,6 +5,15 @@ export async function getCurrentUser() {
   const token = await getSessionToken();
   if (!token) return null;
 
+  // P1-07 FIX: Check if session exists in DB and is not expired
+  const session = await prisma.session.findFirst({
+    where: {
+      token,
+      expiresAt: { gt: new Date() },
+    },
+  });
+  if (!session) return null;
+
   const payload = await verifySessionToken(token);
   if (!payload || !payload.id) return null;
 
