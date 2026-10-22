@@ -24,8 +24,12 @@ export async function POST(req: Request) {
 
     const isValid = await verifyPassword(validatedData.password, user.password);
     if (!isValid) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
+    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+  }
+
+  if (user.status !== 'APPROVED') {
+    return NextResponse.json({ error: 'Account is not approved or is suspended.' }, { status: 403 });
+  }
 
     const token = await generateToken({ id: user.id, email: user.email, role: user.role });
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days

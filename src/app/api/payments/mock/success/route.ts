@@ -5,6 +5,9 @@ import { recordLedgerEntry } from '@/lib/payments/utils';
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV === 'production' && process.env.PAYMENTS_MOCK_MODE !== 'true') {
+    return new NextResponse('Not Found', { status: 404 });
+  }
   const url = new URL(req.url);
   const paymentId = url.searchParams.get('paymentId');
   if (!paymentId) return NextResponse.redirect(`${appUrl}/payment/failed`);

@@ -35,8 +35,9 @@ export async function recordLedgerEntry(params: {
   amount: number;
   description?: string;
   referenceId?: string;
-}) {
-  return prisma.ledgerEntry.create({
+}, tx?: any) {
+  const db = tx || prisma;
+  return db.ledgerEntry.create({
     data: {
       paymentId: params.paymentId,
       debitAccount: params.debitAccount,

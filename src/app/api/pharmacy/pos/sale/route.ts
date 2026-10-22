@@ -90,14 +90,16 @@ export async function POST(req: Request) {
     // Build items with calculated subtotals & profit
     const itemsData = data.items.map(item => {
       const med = medicines.find(m => m.id === item.medicineId)!;
-      const subtotal = (item.unitPrice * item.quantity) - item.discount;
+      // SECURITY FIX (P1-11): Ignore client unitPrice, use server-side DB price
+      const actualUnitPrice = Number((med as any).sellingPrice || (med as any).price || 0);
+      const subtotal = (actualUnitPrice * item.quantity) - item.discount;
       const purchasePrice = Number(med.purchasePrice);
       const profit = subtotal - (purchasePrice * item.quantity);
       return {
         medicineId: item.medicineId,
         medicineName: med.name,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
+        unitPrice: actualUnitPrice,
         purchasePrice: med.purchasePrice,
         discount: item.discount,
         subtotal,

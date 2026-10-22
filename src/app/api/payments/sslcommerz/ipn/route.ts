@@ -39,6 +39,15 @@ export async function POST(req: Request) {
       const result = await gateway.verify(valId, payment.gatewayTxnId ?? undefined);
 
       if (result.success) {
+            // P0-04/05 FIX: Verify amount before marking as paid
+            if (result.amount !== undefined && Math.abs(Number(payment.amount) - result.amount) > 0.01) {
+              console.error('[SSLCOMMERZ_IPN] Amount mismatch for', payment.id);
+              await prisma.payment.update({
+                where: { id: payment.id },
+                data: { status: 'FAILED', failureReason: 'IPN amount mismatch' }
+              });
+              return NextResponse.json({ status: 'AMOUNT_MISMATCH' });
+            }
         await prisma.payment.update({
           where: { id: payment.id },
           data: {

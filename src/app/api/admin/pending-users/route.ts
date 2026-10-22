@@ -14,6 +14,7 @@ export async function POST() {
     });
     return NextResponse.json({ users }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ message: "Error", error: String(error) }, { status: 500 });
+    console.error('[ADMIN_PENDING_USERS_ERROR]', error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
