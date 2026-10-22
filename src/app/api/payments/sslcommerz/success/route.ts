@@ -21,6 +21,14 @@ export async function POST(req: Request) {
     const verify = await gateway.verify(payment.gatewayTxnId || '', { val_id: data.val_id });
 
     if (verify.success) {
+      // P0-05 FIX: Bind val_id to tran_id and verify amount
+      if (verify.amount !== undefined && Math.abs(Number(payment.amount) - verify.amount) > 0.01) {
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: 'FAILED', failureReason: 'Payment amount mismatch' }
+        });
+        return NextResponse.redirect(`${appUrl}/payment/failed?paymentId=${payment.id}`);
+      }
       await prisma.payment.update({
         where: { id: payment.id },
         data: {
