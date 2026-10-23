@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       },
     });
     if (!payment) {
-      console.warn('[SSLCOMMERZ_IPN] Payment not found for tran_id', tranId);
+      console.warn('[SSLCOMMERZ_IPN] Payment not found.');
       return NextResponse.json({ status: 'PAYMENT_NOT_FOUND' });
     }
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ status: 'OK' });
   } catch (err) {
-    console.error('[SSLCOMMERZ_IPN]', err);
+    console.error('[SSLCOMMERZ_IPN]', err instanceof Error ? err.message : 'Unknown error');
     return NextResponse.json({ status: 'ERROR' }, { status: 500 });
   }
 }

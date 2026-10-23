@@ -34,7 +34,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, user });
   } catch (error) {
-    console.error('[AUTH_ME]', error);
+    console.error('[AUTH_ME]', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
