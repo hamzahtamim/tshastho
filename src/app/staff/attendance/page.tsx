@@ -64,7 +64,7 @@ export default function StaffAttendancePage() {
         setDistance(d);
       }
       return pos;
-    } catch (err: any) {
+    } catch (err) {
       setGpsError(err.message);
       return null;
     }
@@ -119,7 +119,7 @@ export default function StaffAttendancePage() {
       } else {
         setMessage(data.message || "Failed");
       }
-    } catch (err: any) {
+    } catch (err) {
       setMessage(err.message || "Failed");
     }
     setProcessing(false);

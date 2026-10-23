@@ -78,7 +78,7 @@ export async function sendViaMeta(
       error: data.error?.message || 'Meta API failed',
       raw: data,
     };
-  } catch (e: any) {
+  } catch (e) {
     return { success: false, error: e.message || 'Network error' };
   }
 }

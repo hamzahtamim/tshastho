@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const slots = await getAvailableSlots(id, date);
     return NextResponse.json({ success: true, slots, date });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[SLOTS]', error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Failed to get slots', 500);
   }

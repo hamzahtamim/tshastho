@@ -8,8 +8,8 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const data: any = {};
-    formData.forEach((v, k) => { data[k] = v; });
+    const data: Record<string, string> = {};
+    formData.forEach((v, k) => { data[k] = String(v); });
 
     const tranId = data.tran_id;
     if (!tranId) return NextResponse.redirect(`${appUrl}/payment/failed`);
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
           data: {
             status: 'COMPLETED',
             gatewayRefId: verify.gatewayRefId,
-            gatewayPayload: verify.raw,
+            gatewayPayload: verify.raw as any,
             paidAt: new Date(),
           },
         });
@@ -71,8 +71,8 @@ export async function POST(req: Request) {
 
     return NextResponse.redirect(`${appUrl}/payment/failed?paymentId=${payment.id}`);
 
-  } catch (error) {
-    console.error('[SSL_SUCCESS]', error);
+  } catch (error: unknown) {
+    console.error('[SSL_SUCCESS]', error instanceof Error ? error.message : error);
     return NextResponse.redirect(`${appUrl}/payment/failed`);
   }
 }

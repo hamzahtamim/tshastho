@@ -31,7 +31,7 @@ export default function SelfieCapture({ onCapture, onClose }: Props) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-    } catch (err: any) {
+    } catch (err) {
       setError("Camera access denied. Please allow camera permission.");
     }
   };

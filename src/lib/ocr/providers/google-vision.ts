@@ -53,7 +53,7 @@ export async function extractWithGoogleVision(
       confidence: items.length > 0 ? 0.6 : 0,
       raw: data,
     };
-  } catch (e: any) {
+  } catch (e) {
     return { text: '', items: [], confidence: 0, error: e.message };
   }
 }

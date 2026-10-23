@@ -12,7 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const result = await completeTransfer({ transferId: id, userId: user.id });
     return NextResponse.json({ success: true, transfer: result });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[TRANSFER_COMPLETE]', error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Failed', 500);
   }

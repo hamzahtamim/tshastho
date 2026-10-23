@@ -77,7 +77,7 @@ export default function BulkImportPage() {
       } else {
         setError(data.message || "Import failed");
       }
-    } catch (err: any) {
+    } catch (err) {
       setError("Failed to read file");
     }
     setUploading(false);

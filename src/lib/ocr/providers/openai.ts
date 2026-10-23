@@ -78,7 +78,7 @@ Rules:
       confidence: items.length > 0 ? 0.85 : 0,
       raw: data,
     };
-  } catch (e: any) {
+  } catch (e) {
     return { text: '', items: [], confidence: 0, error: e.message };
   }
 }

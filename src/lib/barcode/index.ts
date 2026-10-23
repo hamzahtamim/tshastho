@@ -32,7 +32,7 @@ export async function generateBarcodeBuffer(
 
   try {
     return await bwipjs.toBuffer(options);
-  } catch (e: any) {
+  } catch (e) {
     throw new Error(`Barcode generation failed: ${e.message}`);
   }
 }

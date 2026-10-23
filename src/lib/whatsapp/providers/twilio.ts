@@ -50,7 +50,7 @@ export async function sendViaTwilio(
       error: data.message || 'Twilio API failed',
       raw: data,
     };
-  } catch (e: any) {
+  } catch (e) {
     return { success: false, error: e.message || 'Network error' };
   }
 }

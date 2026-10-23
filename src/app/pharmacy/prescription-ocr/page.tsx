@@ -61,7 +61,7 @@ export default function PrescriptionOcrPage() {
           setItems([{ medicineName: "", strength: "", frequency: "", duration: "" }]);
         }
       } else setMessage(data.message || "Failed");
-    } catch (err: any) {
+    } catch (err) {
       setProcessing(false);
       setMessage(err.message || "Failed");
     }

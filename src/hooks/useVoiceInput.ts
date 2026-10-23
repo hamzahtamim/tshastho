@@ -67,7 +67,7 @@ export function useVoiceInput(options: VoiceRecognitionOptions = {}) {
     recognitionRef.current = recognition;
     try {
       recognition.start();
-    } catch (e: any) {
+    } catch (e) {
       onError?.(e.message || "Failed to start");
     }
   }, [isSupported, language, continuous, interimResults, onResult, onError, onEnd]);

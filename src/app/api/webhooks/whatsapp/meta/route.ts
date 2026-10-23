@@ -26,7 +26,7 @@ export async function POST(req: Request) {
           });
           if (!log) continue;
 
-          const statusMap: Record<string, any> = {
+          const statusMap: Record<string, unknown> = {
             sent: 'SENT',
             delivered: 'DELIVERED',
             read: 'READ',

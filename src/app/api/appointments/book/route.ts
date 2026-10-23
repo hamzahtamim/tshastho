@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       appointment,
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }

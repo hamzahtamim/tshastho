@@ -105,7 +105,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
     console.error('[PURCHASE_RECEIVE]', error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Failed to receive purchase', 500);
   }

@@ -88,7 +88,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     return NextResponse.json({ success: true, purchaseOrder: po }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[AUTO_PO]', error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Failed', 500);
   }

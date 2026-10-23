@@ -47,7 +47,7 @@ export async function sendEmail(params: SendEmailParams): Promise<EmailResult> {
       return { success: false, error: result.error.message };
     }
     return { success: true, id: result.data?.id };
-  } catch (e: any) {
+  } catch (e) {
     return { success: false, error: e.message };
   }
 }

@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     // Calculate stats
     let totalSpent = 0, totalPaid = 0, totalDue = 0, totalProfit = 0;
     let deliveredCount = 0, cancelledCount = 0;
-    let favMedicineMap: any = {};
+    const favMedicineMap: any = {};
 
     for (const order of orders) {
       if (order.status === "DELIVERED") {
