@@ -21,7 +21,7 @@ export interface ExternalRecall {
   severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   recallDate?: Date;
   publishedAt?: Date;
-  rawPayload?: unknown;
+  rawPayload?: any;
 }
 
 /**

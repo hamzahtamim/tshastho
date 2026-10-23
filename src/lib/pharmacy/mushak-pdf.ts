@@ -51,7 +51,7 @@ export async function buildMushakData(invoiceId: string): Promise<Mushak6_3Data 
       ? await p.medicine.findMany({ where: { id: { in: medIds } }, select: { id: true, name: true } })
       : [];
     const medMap = new Map<string, string>(meds.map((m: { id: string; name: string }) => [m.id, m.name]));
-    items = orderItems.map((i: { medicineId: string; quantity: number; unitPrice: unknown; subtotal: unknown }) => ({
+    items = orderItems.map((i: { medicineId: string; quantity: number; unitPrice: any; subtotal: any }) => ({
       description: medMap.get(i.medicineId) ?? 'Item',
       quantity: Number(i.quantity ?? 0),
       unitPrice: Number(i.unitPrice ?? 0),
@@ -62,7 +62,7 @@ export async function buildMushakData(invoiceId: string): Promise<Mushak6_3Data 
       where: { saleId: inv.posSaleId },
       select: { medicineName: true, quantity: true, unitPrice: true, subtotal: true },
     });
-    items = posItems.map((i: { medicineName: string; quantity: number; unitPrice: unknown; subtotal: unknown }) => ({
+    items = posItems.map((i: { medicineName: string; quantity: number; unitPrice: any; subtotal: any }) => ({
       description: i.medicineName,
       quantity: Number(i.quantity ?? 0),
       unitPrice: Number(i.unitPrice ?? 0),
