@@ -23,3 +23,10 @@ All critical and high-severity vulnerabilities identified in the initial audit h
 
 - **P3-17 — Lint errors:** Status: OPEN. Over 800 `any` type lint errors exist, marked for future code cleanup.
 - **P3-18 — Security headers:** Status: VERIFIED. Added HTTP headers in `next.config.ts`.
+
+## Additional Hardening (Phase 8)
+
+- **P2-14 (CSRF):** Status: VERIFIED. Added Origin check in `proxy.ts` to prevent cross-site request forgery.
+- **P3-1 (Session Security):** Status: VERIFIED. Hashed session tokens in the database using SHA-256.
+- **P3-3 (Log Sanitization):** Status: VERIFIED. Sanitized production logs to prevent PII and database error leakage.
+- **CI/CD Integration:** Status: VERIFIED. Added GitHub Actions workflow to automatically run ESLint and Production Build on every Pull Request.
