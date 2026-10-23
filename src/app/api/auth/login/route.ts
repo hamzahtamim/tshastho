@@ -11,7 +11,7 @@ const loginSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body: unknown = await req.json();
     const validatedData = loginSchema.parse(body);
 
     const user = await prisma.user.findUnique({

@@ -48,7 +48,7 @@ export async function deleteSession() {
   cookieStore.delete('tshastho_session');
 }
 
-export async function generateToken(payload: any) {
+export async function generateToken(payload: Record<string, unknown>) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()

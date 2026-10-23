@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 export function generatePaymentNumber(): string {
@@ -35,7 +36,7 @@ export async function recordLedgerEntry(params: {
   amount: number;
   description?: string;
   referenceId?: string;
-}, tx?: any) {
+}, tx?: Prisma.TransactionClient) {
   const db = tx || prisma;
   return db.ledgerEntry.create({
     data: {
