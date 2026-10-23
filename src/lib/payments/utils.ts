@@ -31,8 +31,8 @@ export function generateSettlementNumber(): string {
 // Double-entry ledger: both sides of a transaction
 export async function recordLedgerEntry(params: {
   paymentId?: string;
-  debitAccount: any;
-  creditAccount: any;
+  debitAccount: string;
+  creditAccount: string;
   amount: number;
   description?: string;
   referenceId?: string;
