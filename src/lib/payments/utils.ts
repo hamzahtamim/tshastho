@@ -41,8 +41,8 @@ export async function recordLedgerEntry(params: {
   return db.ledgerEntry.create({
     data: {
       paymentId: params.paymentId,
-      debitAccount: params.debitAccount,
-      creditAccount: params.creditAccount,
+      debitAccount: params.debitAccount as any,
+      creditAccount: params.creditAccount as any,
       amount: params.amount,
       description: params.description,
       referenceId: params.referenceId,

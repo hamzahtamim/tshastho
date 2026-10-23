@@ -14,11 +14,10 @@ export const sslcommerzGateway: PaymentGateway = {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     if (!storeId || !storePass) {
-    if (process.env.NODE_ENV === 'production' && process.env.PAYMENTS_MOCK_MODE !== 'true') {
-      throw new Error('FATAL: Missing SSLCommerz credentials in production environment. Mock mode is disabled.');
-    }
-      // DEV MOCK: return a fake gateway URL so we can test the flow without live keys
-      console.warn('[SSLCOMMERZ] Missing credentials — using mock mode');
+      if (process.env.NODE_ENV === 'production' && process.env.PAYMENTS_MOCK_MODE !== 'true') {
+        throw new Error('FATAL: Missing SSLCommerz credentials in production environment. Mock mode is disabled.');
+      }
+      console.warn('[SSLCOMMERZ] Missing credentials - using mock mode');
       return {
         gatewayTxnId: `MOCK-${paymentId}`,
         redirectUrl: `${appUrl}/api/payments/mock/success?paymentId=${paymentId}`,
@@ -53,7 +52,8 @@ export const sslcommerzGateway: PaymentGateway = {
       body: body.toString(),
     });
 
-    const data = await res.json();
+    const data: any = await res.json();
+
     if (!data?.GatewayPageURL) {
       throw new Error(data?.failedreason || 'SSLCommerz initiation failed');
     }
@@ -65,50 +65,53 @@ export const sslcommerzGateway: PaymentGateway = {
     };
   },
 
-  async verify(gatewayTxnId: string, extra?: any): Promise<PaymentVerifyResult> {
-    const valId = extra?.val_id;
+  async verify(gatewayTxnId: string, extras?: any): Promise<PaymentVerifyResult> {
+    const valId = extras?.val_id;
     if (!valId) return { success: false, gatewayTxnId, raw: {}, failureReason: 'Missing val_id' };
 
     const res = await fetchWithRetry(
       `${SSL_BASE}/validator/api/validationserverAPI.php?val_id=${valId}&store_id=${process.env.SSLCOMMERZ_STORE_ID}&store_passwd=${process.env.SSLCOMMERZ_STORE_PASS}&format=json`
     );
-    const data = await res.json();
 
-    const success = ['VALID', 'VALIDATED'].includes(data?.status);
+    const data: any = await res.json();
+
+    const success = ['VALID', 'VALIDATED'].includes(data.status);
     return {
       success,
       gatewayTxnId,
-      gatewayRefId: data?.bank_tran_id || data?.tran_id,
-      amount: data?.amount ? Number(data.amount) : undefined,
+      gatewayRefId: data.bank_tran_id || data.tran_id,
+      amount: data.amount ? Number(data.amount) : undefined,
       raw: data,
-      failureReason: success ? undefined : data?.status,
+      failureReason: success ? undefined : data.status,
     };
   },
+
   async refund(gatewayTxnId: string, amount: number, reason?: string): Promise<{ refundRefId?: string; raw?: unknown }> {
     const storeId = process.env.SSLCOMMERZ_STORE_ID;
     const storePass = process.env.SSLCOMMERZ_STORE_PASS;
     if (!storeId || !storePass) {
-      console.warn("[SSLCOMMERZ] Missing refund credentials - using mock mode");
+      console.warn('[SSLCOMMERZ] Missing refund credentials - using mock mode');
       return { refundRefId: `MOCK-REFUND-${Date.now()}`, raw: { mock: true, amount, reason } };
     }
     const url = new URL(`${SSL_BASE}/validator/api/merchantTransIDvalidationAPI.php`);
-    url.searchParams.set("bank_tran_id", gatewayTxnId);
-    url.searchParams.set("refund_amount", String(amount));
-    url.searchParams.set("refund_remarks", reason ?? "Customer return refund");
-    url.searchParams.set("store_id", storeId);
-    url.searchParams.set("store_passwd", storePass);
-    url.searchParams.set("format", "json");
+    url.searchParams.set('bank_tran_id', gatewayTxnId);
+    url.searchParams.set('refund_amount', String(amount));
+    url.searchParams.set('refund_remarks', reason ?? 'Customer return refund');
+    url.searchParams.set('store_id', storeId);
+    url.searchParams.set('store_passwd', storePass);
+    url.searchParams.set('format', 'json');
+
     const res = await fetchWithRetry(url.toString());
     const data: any = await res.json();
-    const status = String(data?.status ?? data?.APIConnect ?? "").toUpperCase();
-    const ok = status === "SUCCESS" || status === "DONE";
+
+    const status = String(data?.status ?? data?.APIConnect ?? '').toUpperCase();
+    const ok = status === 'SUCCESS' || status === 'DONE';
     if (!ok) {
-      throw new Error(data?.errorReason || data?.failedreason || "SSLCommerz refund failed");
+      throw new Error(data?.errorReason || data?.failedreason || 'SSLCommerz refund failed');
     }
     return {
       refundRefId: data?.refund_ref_id ?? data?.refund_ref_number ?? data?.bank_tran_id ?? gatewayTxnId,
       raw: data,
     };
   },
-
 };
