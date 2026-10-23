@@ -14,6 +14,7 @@ export default function PatientDuesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     const email = user?.email;
     if (!email) { router.push("/login"); return; }
 
@@ -29,7 +30,7 @@ export default function PatientDuesPage() {
       setLoading(false);
     })
     .catch(() => setLoading(false));
-  }, []);
+  }, [user, authLoading]);
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
