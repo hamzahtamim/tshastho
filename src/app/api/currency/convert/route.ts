@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   try {
     const converted = await convertAmount(amount, from, to);
     return NextResponse.json({ success: true, amount, from, to, converted: Number(converted.toFixed(4)) });
-  } catch (e: any) {
+  } catch (e) {
     return errorResponse(ErrorCodes.INTERNAL_ERROR, e.message, 500);
   }
 }

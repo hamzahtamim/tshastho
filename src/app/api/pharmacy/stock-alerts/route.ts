@@ -83,7 +83,7 @@ export async function POST(req: Request) {
 
     const alert = await prisma.stockAlert.update({ where: { id: data.id }, data: update });
     return NextResponse.json({ success: true, alert });
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }

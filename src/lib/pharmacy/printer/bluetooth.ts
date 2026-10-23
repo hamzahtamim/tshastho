@@ -22,14 +22,14 @@ export type WebBluetoothLike = {
 
 function getBT(): WebBluetoothLike {
   const nav = typeof navigator !== 'undefined' ? navigator : undefined;
-  const bt = (nav as unknown as { bluetooth?: WebBluetoothLike })?.bluetooth;
+  const bt = (nav as any as { bluetooth?: WebBluetoothLike })?.bluetooth;
   if (!bt) throw new Error('Web Bluetooth not supported in this browser. Use Chrome/Edge on HTTPS.');
   return bt;
 }
 
 export function isBluetoothSupported(): boolean {
   if (typeof navigator === 'undefined') return false;
-  return !!(navigator as unknown as { bluetooth?: unknown }).bluetooth;
+  return !!(navigator as any as { bluetooth?: any }).bluetooth;
 }
 
 /**

@@ -75,7 +75,7 @@ export function createScannerDetector(opts: ScannerDetectorOptions = {}) {
 export function playBeep(opts?: { freq?: number; durationMs?: number; volume?: number }) {
   if (typeof window === 'undefined') return;
   try {
-    const Ctx = (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+    const Ctx = (window.AudioContext || (window as any as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
     if (!Ctx) return;
     const ctx = new Ctx();
     const osc = ctx.createOscillator();

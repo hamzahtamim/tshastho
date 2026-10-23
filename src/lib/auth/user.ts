@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { getSessionToken, verifySessionToken } from './session';
+import { getSessionToken, verifySessionToken, hashToken } from './session';
 
 export async function getCurrentUser() {
   const token = await getSessionToken();

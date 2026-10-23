@@ -56,7 +56,7 @@ export async function GET() {
         scriptPath: 'scripts/backup-db.sh',
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[BACKUP_STATUS]', error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Health check failed', 500);
   }

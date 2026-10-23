@@ -332,11 +332,11 @@ export async function POST(req: Request) {
       },
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }
-    console.error('[POS_SALE]', error);
-    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Sale failed', 500);
+    console.error('[POS_SALE]', error instanceof Error ? error.message : error);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error instanceof Error ? error.message : 'Sale failed', 500);
   }
 }

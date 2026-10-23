@@ -102,7 +102,7 @@ export async function POST(req: Request) {
           });
           created++;
         }
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ row: i + 1, message: err.message || 'Failed' });
       }
     }
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
       summary: { created, updated, skipped, errors: errors.length },
       errors: errors.slice(0, 20),
     });
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }

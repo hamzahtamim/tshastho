@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
     const barcode = await prisma.medicineBarcode.create({ data });
     return NextResponse.json({ success: true, barcode }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }

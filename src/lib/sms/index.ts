@@ -15,7 +15,7 @@ export interface SendSmsParams {
 }
 
 function normalizePhone(phone: string): string {
-  let p = phone.replace(/\D/g, '');
+  const p = phone.replace(/\D/g, '');
   if (p.startsWith('880')) return p;
   if (p.startsWith('0')) return '88' + p;
   return '88' + p;
@@ -65,7 +65,7 @@ async function sendViaProvider(provider: SmsProvider, phone: string, message: st
 
     // MANUAL - just log
     return { refId: `MANUAL-${Date.now()}` };
-  } catch (e: any) {
+  } catch (e) {
     return { error: e.message || 'Unknown error' };
   }
 }
@@ -114,7 +114,7 @@ export async function sendSms(params: SendSmsParams) {
  * Renders a template with variables.
  * Template uses {{var}} syntax.
  */
-export function renderTemplate(body: string, vars: Record<string, any>): string {
+export function renderTemplate(body: string, vars: Record<string, unknown>): string {
   return body.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     const v = vars[key];
     return v !== undefined && v !== null ? String(v) : '';

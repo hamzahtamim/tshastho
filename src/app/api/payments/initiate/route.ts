@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       data: {
         status: "PENDING",
         gatewayTxnId: result.gatewayTxnId,
-        gatewayPayload: result.raw,
+        gatewayPayload: result.raw as any,
       },
     });
 
@@ -83,11 +83,11 @@ export async function POST(req: Request) {
       paymentNumber,
       redirectUrl: result.redirectUrl,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }
-    console.error('[PAYMENT_INITIATE]', error);
+    console.error('[PAYMENT_INITIATE]', error instanceof Error ? error.message : error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Payment initiation failed', 500);
   }
 }

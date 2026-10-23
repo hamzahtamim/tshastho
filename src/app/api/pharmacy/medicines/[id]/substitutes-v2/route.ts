@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const result = await getSubstitutes({ pharmacyId, medicineId: id });
     return NextResponse.json({ success: true, ...result });
-  } catch (e: any) {
+  } catch (e) {
     return errorResponse(ErrorCodes.INTERNAL_ERROR, e.message, 500);
   }
 }

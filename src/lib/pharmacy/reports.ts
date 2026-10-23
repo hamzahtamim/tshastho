@@ -180,7 +180,7 @@ export async function pnlReport(pharmacyId: string, range: DateRange) {
       where: { pharmacyId, createdAt: { gte: range.from, lte: range.to } },
       _sum: { amount: true },
     }) ?? [];
-    expenseBreakdown = (rows as Array<{ category: string; _sum: { amount: unknown } }>).map((r) => ({
+    expenseBreakdown = (rows as Array<{ category: string; _sum: { amount: any } }>).map((r) => ({
       category: r.category,
       amount: Number(r._sum.amount ?? 0),
     }));
@@ -279,7 +279,7 @@ export async function supplierAgingReport(pharmacyId: string, range: DateRange) 
         supplier: { select: { id: true, name: true } },
       },
     }) ?? [];
-    rows = (purchaseOrders as Array<{ dueAmount: unknown; createdAt: Date; supplier: { name: string } | null }>).map((p) => ({
+    rows = (purchaseOrders as Array<{ dueAmount: any; createdAt: Date; supplier: { name: string } | null }>).map((p) => ({
       supplier: p.supplier?.name ?? 'Unknown',
       due: Number(p.dueAmount ?? 0),
       createdAt: p.createdAt,
@@ -318,7 +318,7 @@ export async function supplierAgingReport(pharmacyId: string, range: DateRange) 
 export function toCSV(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return '';
   const headers = Object.keys(rows[0]);
-  const escape = (v: unknown): string => {
+  const escape = (v: any): string => {
     if (v === null || v === undefined) return '';
     const s = String(v);
     if (s.includes(',') || s.includes('"') || s.includes('\n')) {

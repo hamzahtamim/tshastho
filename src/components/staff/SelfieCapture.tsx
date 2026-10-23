@@ -49,14 +49,14 @@ export default function SelfieCapture({ onCapture, onCancel }: SelfieCaptureProp
         // Safely attempt play, ignore AbortError
         try {
           await video.play();
-        } catch (playErr: any) {
+        } catch (playErr) {
           if (playErr.name !== "AbortError") {
             console.warn("Video play warning:", playErr);
           }
         }
       }
       if (mountedRef.current) setLoading(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Camera error:", err);
       if (mountedRef.current) {
         setError("Camera access denied. Please allow camera permission.");

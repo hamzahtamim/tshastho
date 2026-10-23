@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     const warnings = await checkInteractions(data.medicineNames);
     return NextResponse.json({ success: true, warnings });
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }

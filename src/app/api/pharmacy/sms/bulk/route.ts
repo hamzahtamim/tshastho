@@ -60,14 +60,14 @@ export async function POST(req: Request) {
           createdById: user.id,
         });
         sent++;
-      } catch (e: any) {
+      } catch (e) {
         failed++;
         errors.push(`${c.phone}: ${e.message}`);
       }
     }
 
     return NextResponse.json({ success: true, sent, failed, errors: errors.slice(0, 10) });
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }

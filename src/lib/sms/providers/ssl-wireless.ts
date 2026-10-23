@@ -52,7 +52,7 @@ export async function sendSslWireless(
       error: data.error_message || data.status || 'Send failed',
       raw: data,
     };
-  } catch (e: any) {
+  } catch (e) {
     return { success: false, error: e.message || 'Network error' };
   }
 }

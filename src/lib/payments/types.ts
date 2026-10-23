@@ -13,7 +13,7 @@ export type PaymentInitPayload = {
 export type PaymentInitResult = {
   gatewayTxnId: string;
   redirectUrl: string;
-  raw: any;
+  raw?: any;
 };
 
 export type PaymentVerifyResult = {
@@ -21,13 +21,13 @@ export type PaymentVerifyResult = {
   gatewayTxnId: string;
   gatewayRefId?: string;
   amount?: number;
-  raw: any;
+  raw?: any;
   failureReason?: string;
 };
 
 export interface PaymentGateway {
   name: string;
   initiate(payload: PaymentInitPayload, paymentId: string): Promise<PaymentInitResult>;
-  verify(gatewayTxnId: string, extra?: any): Promise<PaymentVerifyResult>;
+  verify(gatewayTxnId: string, extra?: unknown): Promise<PaymentVerifyResult>;
   refund?(gatewayTxnId: string, amount: number, reason?: string): Promise<any>;
 }

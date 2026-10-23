@@ -25,7 +25,7 @@ export async function GET(
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
-  } catch (e: any) {
+  } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 400 });
   }
 }

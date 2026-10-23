@@ -12,7 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const result = await processReturn({ returnId: id, userId: user.id });
     return NextResponse.json({ success: true, return: result });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[RETURN_PROCESS]', error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Failed to process return', 500);
   }
