@@ -4,8 +4,10 @@ import Link from "next/link";
 import { Star, Search, Briefcase, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function DoctorsPage() {
+  const { user } = useAuth();
   const [doctors, setDoctors] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -34,7 +36,15 @@ export default function DoctorsPage() {
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-blue-600">Tshastho</Link>
-          <Link href="/login" className="text-sm text-slate-600">Login</Link>
+          {user ? (
+            <Link href="/dashboard" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/login" className="text-sm text-slate-600 hover:text-blue-600 transition-colors">
+              Login
+            </Link>
+          )}
         </div>
       </nav>
 
