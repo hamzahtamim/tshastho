@@ -1,0 +1,40 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Generate Prisma Client
+      run: npx prisma generate
+      env:
+        DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+
+    - name: Run ESLint
+      run: npm run lint
+
+    - name: Run Production Build
+      run: npm run build
+      env:
+        DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+        NEXT_PUBLIC_SUPABASE_URL: "https://dummy.supabase.co"
+        SUPABASE_SERVICE_ROLE_KEY: "dummy"
+        JWT_SECRET: "dummy_secret_for_ci_build_only"
