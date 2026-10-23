@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
@@ -53,4 +54,8 @@ export async function generateToken(payload: any) {
     .setIssuedAt()
     .setExpirationTime('7d')
     .sign(SECRET_KEY);
+}
+
+export function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }

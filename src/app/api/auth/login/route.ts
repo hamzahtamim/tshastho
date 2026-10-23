@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth/password';
-import { generateToken, createSession } from '@/lib/auth/session';
+import { generateToken, createSession, hashToken } from '@/lib/auth/session';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     await prisma.session.create({
       data: {
         userId: user.id,
-        token,
+        token: hashToken(token),
         expiresAt,
       },
     });
