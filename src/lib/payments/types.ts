@@ -13,7 +13,7 @@ export type PaymentInitPayload = {
 export type PaymentInitResult = {
   gatewayTxnId: string;
   redirectUrl: string;
-  raw?: any;
+  raw?: Record<string, unknown>;
 };
 
 export type PaymentVerifyResult = {
@@ -21,7 +21,7 @@ export type PaymentVerifyResult = {
   gatewayTxnId: string;
   gatewayRefId?: string;
   amount?: number;
-  raw?: any;
+  raw?: Record<string, unknown>;
   failureReason?: string;
 };
 
