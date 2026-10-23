@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, message: 'Doctor registration submitted for approval', userId: user.id }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
-    console.error('[DOCTOR_REGISTER]', error);
+    console.error('[DOCTOR_REGISTER]', error instanceof Error ? error.message : 'Unknown error');
     return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }

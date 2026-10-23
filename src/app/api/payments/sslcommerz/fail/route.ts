@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     if (tranId) {
       // SECURITY FIX (P1-10): Do not blindly trust fail callbacks. 
       // The IPN route will securely update the payment status to FAILED.
-      console.log(`[SSLCOMMERZ_FAIL] Fail callback received for ${tranId}. Awaiting IPN to update status.`);
+      console.warn('[SSLCOMMERZ_FAIL] Fail callback received. Awaiting IPN.');
     }
   } catch {}
   return NextResponse.redirect(`${appUrl}/payment/failed`);

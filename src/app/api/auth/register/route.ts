@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }
-    console.error('[REGISTER_ERROR]', error);
+    console.error('[REGISTER_ERROR]', error instanceof Error ? error.message : 'Unknown error');
     return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }

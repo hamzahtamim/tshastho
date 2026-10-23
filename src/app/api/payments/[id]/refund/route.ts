@@ -59,7 +59,7 @@ export async function POST(
         }
       }
     } catch (e) {
-      console.warn('[REFUND_GATEWAY]', e);
+      console.warn('[REFUND_GATEWAY]', e instanceof Error ? e.message : 'Unknown error');
     }
 
     const newRefundedTotal = Number(payment.refundedAmount) + refundAmount;
@@ -92,7 +92,7 @@ export async function POST(
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }
-    console.error('[REFUND]', error);
+    console.error('[REFUND]', error instanceof Error ? error.message : 'Unknown error');
     return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Refund failed', 500);
   }
 }
