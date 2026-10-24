@@ -8,8 +8,8 @@ export async function getCurrentUser() {
   // P1-07 FIX: Check if session exists in DB and is not expired
   const session = await prisma.session.findFirst({
     where: {
-      token,
-      expiresAt: { gt: new Date() },
+      token: hashToken(token),
+        expiresAt: { gt: new Date() },
     },
   });
   if (!session) return null;

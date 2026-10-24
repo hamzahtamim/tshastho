@@ -12,10 +12,10 @@ export async function POST(req: Request) {
     formData.forEach((v, k) => { data[k] = String(v); });
 
     const tranId = data.tran_id;
-    if (!tranId) return NextResponse.redirect(`${appUrl}/payment/failed`);
+    if (!tranId) return NextResponse.redirect(new URL(`/payment/failed`, process.env.NEXT_PUBLIC_APP_URL || req.url));
 
     const payment = await prisma.payment.findUnique({ where: { id: tranId } });
-    if (!payment) return NextResponse.redirect(`${appUrl}/payment/failed`);
+    if (!payment) return NextResponse.redirect(new URL(`/payment/failed`, process.env.NEXT_PUBLIC_APP_URL || req.url));
 
     const gateway = getGateway('SSLCOMMERZ');
     const verify = await gateway.verify(payment.gatewayTxnId || '', { val_id: data.val_id });
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
           where: { id: payment.id },
           data: { status: 'FAILED', failureReason: 'Payment amount mismatch' }
         });
-        return NextResponse.redirect(`${appUrl}/payment/failed?paymentId=${payment.id}`);
+        return NextResponse.redirect(new URL(`/payment/failed?paymentId=${payment.id}`, process.env.NEXT_PUBLIC_APP_URL || req.url));
       }
 
       await prisma.$transaction(async (tx) => {
@@ -41,6 +41,40 @@ export async function POST(req: Request) {
             paidAt: new Date(),
           },
         });
+        // Handle Wallet Top-Up
+        if (payment.metadata && (payment.metadata as any).purpose === 'WALLET_TOPUP') {
+          const topupAmount = Number(payment.amount);
+          let wallet = await tx.walletAccount.findUnique({ where: { userId: payment.userId } });
+          if (!wallet) {
+            wallet = await tx.walletAccount.create({ data: { userId: payment.userId } });
+          }
+
+          const currentBalance = Number(wallet.balance);
+          const newBalance = currentBalance + topupAmount;
+
+          await tx.walletAccount.update({
+            where: { id: wallet.id },
+            data: {
+              balance: { increment: topupAmount },
+              availableBalance: { increment: topupAmount },
+              totalTopUp: { increment: topupAmount },
+            },
+          });
+
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              type: 'TOPUP',
+              direction: 'CREDIT',
+              amount: topupAmount,
+              balanceBefore: currentBalance,
+              balanceAfter: newBalance,
+              vertical: 'PLATFORM',
+              description: 'Automatic Top up via SSLCommerz',
+              referenceNumber: verify.gatewayRefId,
+            }
+          });
+        }
 
         // 2. Create Ledger entry
         await recordLedgerEntry({
@@ -61,7 +95,7 @@ export async function POST(req: Request) {
         }
       });
 
-      return NextResponse.redirect(`${appUrl}/payment/success?paymentId=${payment.id}`);
+      return NextResponse.redirect(new URL(`/payment/success?paymentId=${payment.id}`, process.env.NEXT_PUBLIC_APP_URL || req.url));
     }
 
     await prisma.payment.update({
@@ -69,10 +103,10 @@ export async function POST(req: Request) {
       data: { status: 'FAILED', failureReason: verify.failureReason || 'Verification failed' },
     });
 
-    return NextResponse.redirect(`${appUrl}/payment/failed?paymentId=${payment.id}`);
+    return NextResponse.redirect(new URL(`/payment/failed?paymentId=${payment.id}`, process.env.NEXT_PUBLIC_APP_URL || req.url));
 
   } catch (error: unknown) {
     console.error('[SSL_SUCCESS]', error instanceof Error ? error.message : error);
-    return NextResponse.redirect(`${appUrl}/payment/failed`);
+    return NextResponse.redirect(new URL(`/payment/failed`, process.env.NEXT_PUBLIC_APP_URL || req.url));
   }
 }

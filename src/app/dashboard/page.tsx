@@ -17,6 +17,7 @@ import {
   Syringe,
   Search,
   DollarSign,
+  Wallet,
 } from "lucide-react";
 import { useBranding } from "@/hooks/useBranding";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,18 @@ export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const [greeting, setGreeting] = useState("Hello");
   const { branding } = useBranding();
+  const [wallet, setWallet] = useState<any>(null);
+
+  useEffect(() => {
+    if (user) {
+      fetch("/api/wallet/me", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) setWallet(data.wallet);
+        })
+        .catch(console.error);
+    }
+  }, [user]);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -95,6 +108,24 @@ export default function DashboardPage() {
           <span className="text-white text-xl">→</span>
         </div>
       </Link>
+
+      {/* Wallet Card */}
+      <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-4 mb-4 shadow-md flex items-center justify-between">
+        <Link href="/wallet" className="flex items-center gap-3 flex-1">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <Wallet size={18} className="text-white" />
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm">My Wallet</p>
+            <p className="text-white/80 text-xs">
+              Available Balance: Tk {wallet ? Number(wallet.availableBalance).toFixed(2) : "0.00"}
+            </p>
+          </div>
+        </Link>
+        <Link href="/wallet/topup" className="text-white text-xs font-medium bg-white/20 px-3 py-1.5 rounded-full hover:bg-white/30 transition">
+          Top Up
+        </Link>
+      </div>
 
       {/* Dynamic Banner */}
       {branding.bannerHome && (
