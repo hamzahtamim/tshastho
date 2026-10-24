@@ -35,8 +35,12 @@ export async function proxy(request: NextRequest) {
         try {
           const originHost = new URL(origin).host;
           if (originHost !== host) {
-            console.warn('[CSRF_BLOCKED] Origin mismatch. Origin:', originHost, 'Host:', host);
-            return new NextResponse('CSRF Protection: Origin mismatch', { status: 403 });
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[CSRF_DEV_BYPASS] Origin mismatch, but bypassing in development.');
+            } else {
+              console.warn('[CSRF_BLOCKED] Origin mismatch. Origin:', originHost, 'Host:', host);
+              return new NextResponse('CSRF Protection: Origin mismatch', { status: 403 });
+            }
           }
         } catch (error) {
           return new NextResponse('CSRF Protection: Invalid Origin', { status: 403 });

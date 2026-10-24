@@ -1,14 +1,14 @@
+export const dynamic = 'force-dynamic';
 // GET /api/wallet/me — own wallet balance + stats — Item 36
 
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth/guards';
+import { getCurrentUser } from '@/lib/auth/user';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { getOrCreateWallet } from '@/lib/wallet';
 
 export async function GET() {
-  const auth = await requireRole(['PATIENT', 'CUSTOMER', 'PHARMACY_OWNER', 'PHARMACY_STAFF', 'DOCTOR', 'SUPER_ADMIN']);
-  if (auth.error) return auth.error;
-  const user = auth.user!;
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
   try {
     const wallet = await getOrCreateWallet(user.id);
@@ -26,7 +26,7 @@ export async function GET() {
         totalRefunds: Number(wallet.totalRefunds),
         isActive: wallet.isActive,
         isFrozen: wallet.isFrozen,
-        kycLevel: wallet.kycLevel,
+        kycVerified: wallet.kycVerified,
       },
     });
   } catch (error) {

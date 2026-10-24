@@ -32,6 +32,7 @@ enum AccountStatus {
 }
 
 model User {
+  topUpRequests TopUpRequest[]
   sessions            Session[]
   auditLogs           AuditLog[]
   id                  String        @id @default(cuid())
@@ -3639,4 +3640,30 @@ model SampleDistribution {
   @@index([sampleBatchId])
   @@index([doctorId])
   @@map("sample_distributions")
+}
+
+model PaymentMethodConfig {
+  id            String   @id @default(cuid())
+  method        String   @unique
+  accountNumber String
+  accountName   String?
+  accountType   String   @default("PERSONAL")
+  instructions  String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model TopUpRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Decimal
+  currency    String   @default("BDT")
+  method      String
+  trxId       String?
+  status      String   @default("PENDING")
+  adminNote   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
