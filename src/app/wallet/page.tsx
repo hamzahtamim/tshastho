@@ -38,15 +38,24 @@ export default function WalletPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [w, t] = await Promise.all([
-        fetch('/api/wallet/me').then((r) => r.json()),
-        fetch(`/api/wallet/me/transactions?limit=${limit}&offset=${offset}`).then((r) => r.json()),
+      const [wRes, tRes] = await Promise.all([
+        fetch('/api/wallet/me'),
+        fetch(`/api/wallet/me/transactions?limit=${limit}&offset=${offset}`)
       ]);
-      if (w?.success) setWallet(w.wallet);
+      
+      let w = null;
+      let t = null;
+      
+      try { w = await wRes.json(); } catch (err) { console.error('Wallet API parse error', err); }
+      try { t = await tRes.json(); } catch (err) { console.error('Txns API parse error', err); }
+
+      if (w?.success && w.wallet) setWallet(w.wallet);
       if (t?.success) {
         setTxns(t.items ?? []);
         setTotal(t.total ?? 0);
       }
+    } catch (error) {
+      console.error('Failed to load wallet data:', error);
     } finally {
       setLoading(false);
     }
@@ -59,6 +68,21 @@ export default function WalletPage() {
   if (loading && !wallet) {
     return <div className="p-6 text-sm text-gray-500">Loading wallet…</div>;
   }
+
+  if (!loading && !wallet) {
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Could not load wallet</h2>
+          <p className="text-sm text-red-600 mb-4">There was an issue fetching your balance. Please try again.</p>
+          <button onClick={() => load()} className="rounded-md bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-700">
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   const totalPages = Math.ceil(total / limit);
   const currentPage = Math.floor(offset / limit) + 1;
