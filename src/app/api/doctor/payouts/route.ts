@@ -1,12 +1,16 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
 import { z } from 'zod';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
-export const dynamic = 'force-dynamic';
+
+
+
 
 async function getDoctor(user: any) {
-  return prisma.doctor.findFirst({ where: { userId: user.id } });
+  return await getDoctorContext(user);
 }
 
 const schema = z.object({
@@ -16,7 +20,7 @@ const schema = z.object({
 });
 
 export async function GET() {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const doctor = await getDoctor(auth.user!);
   if (!doctor) return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
@@ -30,7 +34,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const doctor = await getDoctor(auth.user!);
   if (!doctor) return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });

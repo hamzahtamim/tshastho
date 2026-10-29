@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 const schema = z.object({
   name: z.string().min(2).optional(),
@@ -21,7 +22,7 @@ const schema = z.object({
 });
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;
@@ -33,7 +34,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const chamber = await prisma.doctorChamber.findUnique({ where: { id } });
     if (!chamber) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Chamber not found', 404);
 
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await await getDoctorContext(user);
     if (user.role !== 'SUPER_ADMIN' && (!doctor || chamber.doctorId !== doctor.id)) {
       return errorResponse(ErrorCodes.FORBIDDEN, 'Not yours', 403);
     }
@@ -60,7 +61,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;
@@ -69,7 +70,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!chamber) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Chamber not found', 404);
 
   if (user.role !== 'SUPER_ADMIN') {
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await await getDoctorContext(user);
     if (!doctor || chamber.doctorId !== doctor.id) {
       return errorResponse(ErrorCodes.FORBIDDEN, 'Not yours', 403);
     }

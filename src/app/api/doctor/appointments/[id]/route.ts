@@ -14,7 +14,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;

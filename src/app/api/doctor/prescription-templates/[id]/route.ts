@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;
@@ -13,7 +14,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!template) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Not found', 404);
 
   if (user.role !== 'SUPER_ADMIN') {
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await await getDoctorContext(user);
     if (!doctor || template.doctorId !== doctor.id) {
       return errorResponse(ErrorCodes.FORBIDDEN, 'Not yours', 403);
     }
@@ -24,7 +25,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;

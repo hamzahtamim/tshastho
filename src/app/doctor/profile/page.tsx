@@ -8,6 +8,7 @@ const DOC_TYPES = ["LICENSE", "DEGREE", "CERTIFICATE", "NID", "PHOTO", "OTHER"];
 
 export default function DoctorProfilePage() {
   const { user } = useAuth();
+  if (user?.role === 'DOCTOR_STAFF') return <div className="p-8 text-center font-bold text-red-500">Access Denied. You are a staff member. You cannot edit the doctor's profile.</div>;
   const [tab, setTab] = useState<"basic" | "specialties" | "qualifications" | "experience" | "awards" | "memberships" | "documents" | "reviews">("basic");
   const [profile, setProfile] = useState<any>(null);
   const [specialties, setSpecialties] = useState<any[]>([]);

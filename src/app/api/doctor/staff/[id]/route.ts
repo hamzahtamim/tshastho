@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 const schema = z.object({
   role: z.enum(['RECEPTIONIST', 'ASSISTANT', 'NURSE', 'COMPOUNDER', 'MANAGER', 'OTHER']).optional(),
@@ -20,7 +21,7 @@ const schema = z.object({
 });
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;
@@ -37,7 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!staff) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Staff not found', 404);
 
   if (user.role !== 'SUPER_ADMIN') {
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await await getDoctorContext(user);
     if (!doctor || staff.doctorId !== doctor.id) {
       return errorResponse(ErrorCodes.FORBIDDEN, 'Not yours', 403);
     }
@@ -47,7 +48,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;
@@ -60,7 +61,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (!staff) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Staff not found', 404);
 
     if (user.role !== 'SUPER_ADMIN') {
-      const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+      const doctor = await await getDoctorContext(user);
       if (!doctor || staff.doctorId !== doctor.id) {
         return errorResponse(ErrorCodes.FORBIDDEN, 'Not yours', 403);
       }
@@ -102,7 +103,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;
@@ -111,7 +112,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!staff) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Staff not found', 404);
 
   if (user.role !== 'SUPER_ADMIN') {
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await await getDoctorContext(user);
     if (!doctor || staff.doctorId !== doctor.id) {
       return errorResponse(ErrorCodes.FORBIDDEN, 'Not yours', 403);
     }

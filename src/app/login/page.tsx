@@ -41,6 +41,7 @@ export default function Login() {
         const routes: Record<string, string> = {
           SUPER_ADMIN: "/admin",
           DOCTOR: "/doctor",
+          DOCTOR_STAFF: "/doctor",
           PHARMACY_OWNER: "/pharmacy",
           PHARMACY_STAFF: "/staff",
           DIAGNOSTIC_OWNER: "/diagnostic",

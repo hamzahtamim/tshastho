@@ -3,17 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 const schema = z.object({
   signatureUrl: z.string().url(),
 });
 
 export async function POST(req: Request) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
 
-  const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+  const doctor = await await getDoctorContext(user);
   if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
 
   try {
@@ -35,11 +36,11 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
 
-  const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+  const doctor = await await getDoctorContext(user);
   if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
 
   await prisma.doctor.update({

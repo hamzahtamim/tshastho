@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 const schema = z.object({
   action: z.enum(['ACCEPT', 'DECLINE', 'COMPLETE', 'CANCEL']),
@@ -11,7 +12,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
   const { id } = await params;
@@ -23,7 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const c = await prisma.doctorReferralCase.findUnique({ where: { id } });
     if (!c) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Not found', 404);
 
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await await getDoctorContext(user);
     if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Not a doctor', 404);
 
     const isRef = c.referringDoctorId === doctor.id;

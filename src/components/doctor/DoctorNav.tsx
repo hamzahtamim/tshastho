@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Calendar, Video, MessageSquare, MapPin, Users, FilePlus, FileText, Award, UserPlus, Clock, Building, UserCheck, ShieldAlert, Footprints, DollarSign, CreditCard, QrCode, User, Menu, X, LogOut, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function DoctorNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuth();
   const [kycStatus, setKycStatus] = useState<string>("PENDING");
@@ -55,13 +56,37 @@ export default function DoctorNav() {
     }
   ];
 
-  const displayName = user?.name?.toLowerCase().includes('doctor') 
-    ? user.name 
-    : `Dr. ${user?.name || 'Doctor'}`;
+  const isStaff = user?.role === 'DOCTOR_STAFF';
+  const perms = (user?.permissions as any) || {};
 
-  
+  const filteredMainLinks = mainLinks.filter((link: any) => {
+    if (!isStaff) return true;
+    if (link.name === 'Appointments') return perms.canViewAppointments !== false;
+    if (link.name === 'Patients') return perms.canViewPatients === true;
+    return true;
+  });
+
+  const filteredMenuCategories = menuCategories.map((cat: any) => {
+    if (!isStaff) return cat;
+    if (cat.title === 'Finance & Settings') return null;
+    if (cat.title === 'Practice Management') return null;
+
+    if (cat.title === 'Clinical') {
+       if (isStaff) return { title: 'Staff Settings', links: [{ name: 'Logout', href: '/login', icon: LogOut }] };
+       let links = cat.links.filter((l: any) => ['New Prescription', 'Online Rx', 'Rx Templates'].includes(l.name));
+       if (!perms.canCreateLocalRx) links = [];
+       return { ...cat, links };
+    }
+    return cat;
+  }).filter((cat: any) => cat && cat.links.length > 0);
+
+  let displayName = user?.name || 'Doctor';
+  if (!isStaff && !displayName.toLowerCase().includes('doctor')) {
+    displayName = 'Dr. ' + displayName;
+  }
+
   useEffect(() => {
-    if (user) {
+    if (user && !isStaff) {
       fetch('/api/doctor/update-profile', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
@@ -71,23 +96,21 @@ export default function DoctorNav() {
         })
         .catch(console.error);
     }
-  }, [user]);
+  }, [user, isStaff]);
 
   return (
     <>
-      {/* Top Navigation Bar */}
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          
           <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide h-full">
             <span className="text-xl font-black text-blue-600 hidden sm:block">Tshastho</span>
             <div className="flex items-center gap-1 h-full">
-              {mainLinks.map((link) => {
+              {filteredMainLinks.map((link: any) => {
                 const isActive = pathname === link.href || (link.href !== '/doctor' && pathname.startsWith(link.href));
                 return (
-                  <Link 
-                    key={link.name} 
-                    href={link.href} 
+                  <Link
+                    key={link.name}
+                    href={link.href}
                     className={`flex items-center gap-2 px-3 h-full text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
                   >
                     <link.icon size={18} />
@@ -99,18 +122,18 @@ export default function DoctorNav() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => setIsMenuOpen(true)}
               className="p-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl transition flex items-center gap-2 text-sm font-semibold"
             >
               <Menu size={20} />
               <span className="hidden sm:block">Menu</span>
             </button>
-            <button 
+            <button
               onClick={() => {
                 document.cookie = "tshastho_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
                 document.cookie = "userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-                window.location.href = "/login";
+                router.push('/login');
               }}
               className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
               title="Logout"
@@ -121,18 +144,17 @@ export default function DoctorNav() {
         </div>
       </nav>
 
-      {/* Slide-out Premium Menu */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div 
+          <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
             onClick={() => setIsMenuOpen(false)}
           ></div>
-          
+
           <div className="relative w-full max-w-sm bg-slate-50 h-full shadow-2xl flex flex-col animate-slide-in-right overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-slate-200 p-4 flex items-center justify-between z-10">
               <h2 className="text-lg font-bold text-slate-800">Doctor Menu</h2>
-              <button 
+              <button
                 onClick={() => setIsMenuOpen(false)}
                 className="p-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full transition"
               >
@@ -141,9 +163,8 @@ export default function DoctorNav() {
             </div>
 
             <div className="p-4 space-y-6 pb-20">
-              {/* Profile Header */}
               <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-inner overflow-hidden">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-inner overflow-hidden shrink-0">
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -152,28 +173,36 @@ export default function DoctorNav() {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 text-lg">{displayName}</h3>
-                  <p className="text-xs text-slate-500 font-medium mb-1.5">Medicine Specialist</p>
-                {kycStatus === 'VERIFIED' ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
-                    <CheckCircle size={10} /> KYC Verified
-                  </span>
-                ) : kycStatus === 'REJECTED' ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
-                    <XCircle size={10} /> KYC Rejected
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">
-                    <Clock size={10} /> KYC Pending
-                  </span>
-                )}
+                  <p className="text-xs text-slate-500 font-medium mb-1.5">
+                    {isStaff ? (user?.staffRole || 'Staff') : 'Medicine Specialist'}
+                  </p>
+                  {!isStaff && (
+                    <>
+                      {kycStatus === 'VERIFIED' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">
+                          <CheckCircle size={10} /> KYC Verified
+                        </span>
+                      )}
+                      {kycStatus === 'REJECTED' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-700">
+                          <XCircle size={10} /> KYC Rejected
+                        </span>
+                      )}
+                      {kycStatus === 'PENDING' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700">
+                          <Clock size={10} /> KYC Pending
+                        </span>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
-              {menuCategories.map((category, idx) => (
+              {filteredMenuCategories.map((category: any, idx: number) => (
                 <div key={idx}>
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">{category.title}</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {category.links.map((link) => {
+                    {category.links.map((link: any) => {
                       const isActive = pathname === link.href;
                       return (
                         <Link

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export type AuthUser = {
   avatarUrl?: string | null;
@@ -21,6 +22,7 @@ export type AuthUser = {
 };
 
 export function useAuth() {
+  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +56,7 @@ export function useAuth() {
         credentials: "include",
       });
     } finally {
-      window.location.href = "/login";
+      router.push("/login");
     }
   };
 

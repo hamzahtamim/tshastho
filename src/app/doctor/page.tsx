@@ -81,9 +81,7 @@ export default function DoctorDashboard() {
   const completed = appointments.filter(a => a.status === "COMPLETED");
   const initial = doctor.user?.name?.charAt(0).toUpperCase() || "D";
 
-  const doctorName = doctor.user?.name?.toLowerCase().startsWith('dr') || doctor.user?.name?.toLowerCase() === 'doctor' 
-    ? doctor.user?.name 
-    : `Dr. ${doctor.user?.name}`;
+  const doctorName = (user?.role === 'DOCTOR_STAFF' ? (user?.name || 'Staff Member') : `Dr. ${doctor?.user?.name || 'Doctor'}`);
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">

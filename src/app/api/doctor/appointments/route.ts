@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 
 export async function GET(req: Request) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
 
-  const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+  const doctor = await getDoctorContext(user);
   if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
 
   const url = new URL(req.url);

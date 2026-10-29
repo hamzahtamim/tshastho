@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371000;
@@ -32,7 +33,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
 
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = schema.parse(body);
 
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await await getDoctorContext(user);
     if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
 
     const staff = await prisma.doctorStaff.findUnique({ where: { id: data.staffId } });
@@ -171,10 +172,10 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
+  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN', 'DOCTOR_STAFF']);
   if (auth.error) return auth.error;
   const user = auth.user!;
-  const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+  const doctor = await await getDoctorContext(user);
   if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
 
   const url = new URL(req.url);
