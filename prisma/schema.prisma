@@ -32,6 +32,7 @@ enum AccountStatus {
 }
 
 model User {
+  avatarUrl String?
   topUpRequests TopUpRequest[]
   sessions            Session[]
   auditLogs           AuditLog[]
@@ -152,6 +153,7 @@ model Patient {
 }
 
 model Doctor {
+  payoutMethods PayoutMethod[]
   id                   String                   @id @default(cuid())
   userId               String                   @unique
   user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -160,6 +162,15 @@ model Doctor {
   signatureUrl         String?                  @unique
   experience           Int
   consultationFee      Decimal
+  onlineFee            Decimal?
+  offlineFee           Decimal?
+  videoIntroUrl        String?
+  emergencyAvailable   Boolean                  @default(false)
+  services             String?
+  insurances           String?
+  experiences          DoctorExperience[]
+  awards               DoctorAward[]
+  memberships          DoctorMembership[]
   bookingPhone         String?
   chamberAddress       String?
   createdAt            DateTime                 @default(now())
@@ -1925,6 +1936,8 @@ model DoctorPayout {
   status          PayoutRequestStatus @default(REQUESTED)
   method          String?
   accountInfo     Json?
+  payoutMethodId  String?
+  payoutMethod    PayoutMethod?       @relation(fields: [payoutMethodId], references: [id])
   requestedAt     DateTime            @default(now())
   approvedAt      DateTime?
   approvedById    String?
@@ -3666,4 +3679,55 @@ model TopUpRequest {
   adminNote   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+
+model DoctorExperience {
+  id           String   @id @default(cuid())
+  doctorId     String
+  doctor       Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospitalName String
+  designation  String
+  startYear    Int
+  endYear      Int?
+  isCurrent    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model DoctorAward {
+  id        String   @id @default(cuid())
+  doctorId  String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  title     String
+  issuer    String?
+  year      Int
+  createdAt DateTime @default(now())
+}
+
+model DoctorMembership {
+  id           String   @id @default(cuid())
+  doctorId     String
+  doctor       Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  organization String
+  role         String?
+  createdAt    DateTime @default(now())
+}
+
+
+model PayoutMethod {
+  id            String         @id @default(cuid())
+  doctorId      String
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  methodType    String         // BKASH, NAGAD, ROCKET, BANK
+  accountName   String
+  accountNumber String
+  bankName      String?
+  isDefault     Boolean        @default(false)
+  status        String         @default("PENDING") // PENDING, VERIFIED, REJECTED
+  payouts       DoctorPayout[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([doctorId])
 }

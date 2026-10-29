@@ -1,87 +1,74 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth/guards';
-import { errorResponse, ErrorCodes } from '@/lib/errors';
-import { z } from 'zod';
+import { getCurrentUser } from '@/lib/auth/user';
 
-const schema = z.object({
-  rating: z.coerce.number().int().min(1).max(5),
-  comment: z.string().optional(),
-});
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id: doctorId } = await params;
+  try {
+    const resolvedParams = await params;
+    const doctorId = resolvedParams.id;
 
-  const reviews = await prisma.doctorReview.findMany({
-    where: { doctorId, isPublic: true },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    include: {
-      patient: { select: { id: true, name: true } },
-    },
-  });
+    const reviews = await prisma.doctorReview.findMany({
+      where: { doctorId, isPublic: true },
+      include: { patient: { select: { name: true, avatarUrl: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
 
-  return NextResponse.json({ success: true, reviews });
+    return NextResponse.json({ success: true, reviews });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-  const user = auth.user!;
-  const { id: doctorId } = await params;
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const body = await req.json();
-    const data = schema.parse(body);
+    const resolvedParams = await params;
+    const doctorId = resolvedParams.id;
+    const { rating, comment } = await req.json();
 
-    const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
-    if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
-
-    // Check user had appointment
-    const hadAppointment = await prisma.appointment.findFirst({
-      where: {
-        doctorId,
-        patientId: user.id,
-        status: 'COMPLETED',
-      },
-    });
-    if (!hadAppointment) {
-      return errorResponse(ErrorCodes.FORBIDDEN, 'You must have a completed appointment to review', 403);
+    if (!rating || rating < 1 || rating > 5) {
+      return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
     }
 
-    // Upsert (one review per patient per doctor)
-    const review = await prisma.doctorReview.upsert({
-      where: { doctorId_patientId: { doctorId, patientId: user.id } },
-      update: { rating: data.rating, comment: data.comment || null },
-      create: {
-        doctorId,
-        patientId: user.id,
-        rating: data.rating,
-        comment: data.comment || null,
-      },
+    // Check if already reviewed
+    const existing = await prisma.doctorReview.findUnique({
+      where: { doctorId_patientId: { doctorId, patientId: user.id } }
+    });
+    if (existing) {
+      return NextResponse.json({ error: 'You have already reviewed this doctor.' }, { status: 400 });
+    }
+
+    // Create review and update doctor stats in a transaction
+    const newReview = await prisma.$transaction(async (tx) => {
+      const review = await tx.doctorReview.create({
+        data: { doctorId, patientId: user.id, rating: Number(rating), comment }
+      });
+
+      // Calculate new average
+      const aggregate = await tx.doctorReview.aggregate({
+        where: { doctorId },
+        _avg: { rating: true },
+        _count: { rating: true }
+      });
+
+      await tx.doctor.update({
+        where: { id: doctorId },
+        data: {
+          averageRating: aggregate._avg.rating || 0,
+          totalReviews: aggregate._count.rating || 0
+        }
+      });
+
+      return review;
     });
 
-    // Recalculate average
-    const agg = await prisma.doctorReview.aggregate({
-      where: { doctorId, isPublic: true },
-      _avg: { rating: true },
-      _count: { _all: true },
-    });
-
-    await prisma.doctor.update({
-      where: { id: doctorId },
-      data: {
-        averageRating: agg._avg.rating || 0,
-        totalReviews: agg._count._all,
-      },
-    });
-
-    return NextResponse.json({ success: true, review }, { status: 201 });
+    return NextResponse.json({ success: true, review: newReview });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
-    }
-    console.error('[REVIEW]', error);
-    return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Failed', 500);
+    console.error('[POST_REVIEW]', error);
+    return NextResponse.json({ error: 'Failed to submit review' }, { status: 500 });
   }
 }

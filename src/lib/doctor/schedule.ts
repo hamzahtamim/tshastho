@@ -17,7 +17,9 @@ export type SlotInfo = {
   startTime: string;
   endTime: string;
   slotType: string;
-  chamberAddress?: string;
+  chamberAddress: string;
+  chamberId?: string;
+  chamberName?: string;
   consultationFee?: number;
   bookedCount: number;
   maxPatients: number;
@@ -61,6 +63,7 @@ export async function getAvailableSlots(doctorId: string, dateStr: string): Prom
   const dayOfWeek = DAY_NAMES[date.getDay()];
   const schedules = await prisma.doctorSchedule.findMany({
     where: { doctorId, dayOfWeek, isActive: true },
+    include: { chamber: true }
   });
 
   const sources: any[] = [
@@ -85,7 +88,9 @@ export async function getAvailableSlots(doctorId: string, dateStr: string): Prom
         startTime: slotStart,
         endTime: slotEnd,
         slotType: src.slotType || 'IN_PERSON',
-        chamberAddress: src.chamberAddress,
+        chamberAddress: src.chamberAddress || src.chamber?.address || '',
+        chamberId: src.chamberId || undefined,
+        chamberName: src.chamber?.name || undefined,
         consultationFee: src.consultationFee ? Number(src.consultationFee) : undefined,
         bookedCount,
         maxPatients,

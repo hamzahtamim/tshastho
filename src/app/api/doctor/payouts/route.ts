@@ -1,38 +1,29 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/auth/guards';
-import { requestPayout } from '@/lib/doctor/earnings';
-import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 async function getDoctor(user: any) {
   return prisma.doctor.findFirst({ where: { userId: user.id } });
 }
 
 const schema = z.object({
-  amount: z.coerce.number().min(0).optional(),
+  amount: z.coerce.number().min(100, "Minimum payout is 100 BDT"),
   method: z.string().min(1),
-  accountInfo: z.object({
-    accountNumber: z.string().optional(),
-    bankName: z.string().optional(),
-    accountName: z.string().optional(),
-    branchName: z.string().optional(),
-    bkashNumber: z.string().optional(),
-  }).optional(),
-  notes: z.string().optional(),
+  accountNumber: z.string().min(1),
 });
 
 export async function GET() {
   const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
   if (auth.error) return auth.error;
-  const user = auth.user!;
-  const doctor = await getDoctor(user);
-  if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
+  const doctor = await getDoctor(auth.user!);
+  if (!doctor) return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
 
   const payouts = await prisma.doctorPayout.findMany({
     where: { doctorId: doctor.id },
-    orderBy: { createdAt: 'desc' },
-    take: 100,
+    orderBy: { requestedAt: 'desc' },
   });
 
   return NextResponse.json({ success: true, payouts });
@@ -41,28 +32,44 @@ export async function GET() {
 export async function POST(req: Request) {
   const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
   if (auth.error) return auth.error;
-  const user = auth.user!;
-  const doctor = await getDoctor(user);
-  if (!doctor) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Doctor not found', 404);
+  const doctor = await getDoctor(auth.user!);
+  if (!doctor) return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
 
   try {
     const body = await req.json();
     const data = schema.parse(body);
 
-    const payout = await requestPayout({
-      doctorId: doctor.id,
-      amount: data.amount,
-      method: data.method,
-      accountInfo: data.accountInfo || {},
-      notes: data.notes,
+    // Calculate available balance
+    const availableEarnings = await prisma.doctorEarning.aggregate({
+      where: { doctorId: doctor.id, status: 'AVAILABLE' },
+      _sum: { netAmount: true },
+    });
+    const availableBalance = Number(availableEarnings._sum.netAmount || 0);
+
+    if (data.amount > availableBalance) {
+      return NextResponse.json({ error: 'Insufficient available balance' }, { status: 400 });
+    }
+
+    // Generate a unique payout number
+    const payoutNumber = 'PAY-' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 1000);
+
+    const payout = await prisma.doctorPayout.create({
+      data: {
+        doctorId: doctor.id,
+        payoutNumber,
+        amount: data.amount,
+        method: data.method,
+        accountInfo: { accountNumber: data.accountNumber },
+        // Removed status field so it defaults to REQUESTED
+      },
     });
 
-    return NextResponse.json({ success: true, payout }, { status: 201 });
-  } catch (error) {
+    return NextResponse.json({ success: true, payout });
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
+      return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
     }
-    console.error('[PAYOUT_REQUEST]', error);
-    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message || 'Failed', 500);
+    console.error('[PAYOUT_REQUEST_ERROR]', error);
+    return NextResponse.json({ error: 'Failed to request payout: ' + (error.message || 'Unknown error') }, { status: 500 });
   }
 }

@@ -1,166 +1,66 @@
 import { prisma } from '@/lib/prisma';
 
-const DEFAULT_PLATFORM_FEE_PERCENT = 15;
-const HOLD_DAYS = 7; // funds available after 7 days
-
-function generatePayoutNumber(seq: number) {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  return `PAY-DOC-${y}${m}-${String(seq).padStart(4, '0')}`;
-}
-
-/**
- * Records earning when appointment is completed.
- * Splits gross → platform fee + doctor net.
- */
-export async function recordAppointmentEarning(params: {
-  appointmentId: string;
-  doctorId: string;
-  patientId: string;
-  grossAmount: number;
-}) {
-  // Check if already recorded
-  const existing = await prisma.doctorEarning.findUnique({
-    where: { appointmentId: params.appointmentId },
+export async function getEarningsSummary(doctorId: string) {
+  // 1. Get all earnings
+  const earnings = await prisma.doctorEarning.findMany({
+    where: { doctorId },
   });
-  if (existing) return existing;
 
-  // Get platform fee from settings
-  const setting = await prisma.systemSetting.findUnique({
-    where: { key: 'doctor_platform_fee_percent' },
-  });
-  const feePercent = setting ? parseFloat(setting.value) : DEFAULT_PLATFORM_FEE_PERCENT;
-
-  const platformFee = (params.grossAmount * feePercent) / 100;
-  const netAmount = params.grossAmount - platformFee;
-
-  const availableAt = new Date();
-  availableAt.setDate(availableAt.getDate() + HOLD_DAYS);
-
-  return prisma.doctorEarning.create({
-    data: {
-      doctorId: params.doctorId,
-      appointmentId: params.appointmentId,
-      patientId: params.patientId,
-      grossAmount: params.grossAmount,
-      platformFee,
-      netAmount,
-      status: 'PENDING',
-      availableAt,
-    },
-  });
-}
-
-/**
- * Marks pending earnings as AVAILABLE after hold period.
- */
-export async function releaseAvailableEarnings(doctorId: string) {
-  return prisma.doctorEarning.updateMany({
+  // 2. Get pending/requested payouts
+  const pendingPayouts = await prisma.doctorPayout.aggregate({
     where: {
       doctorId,
-      status: 'PENDING',
-      availableAt: { lte: new Date() },
+      status: 'REQUESTED' as any,
     },
-    data: { status: 'AVAILABLE' },
+    _sum: { amount: true },
   });
-}
 
-/**
- * Gets doctor's earnings summary.
- */
-export async function getEarningsSummary(doctorId: string) {
-  // First release any due earnings
-  await releaseAvailableEarnings(doctorId);
+  const totalRequested = Number(pendingPayouts._sum.amount || 0);
 
-  const [pending, available, paid, total] = await Promise.all([
-    prisma.doctorEarning.aggregate({
-      where: { doctorId, status: 'PENDING' },
-      _sum: { netAmount: true },
-      _count: { _all: true },
-    }),
-    prisma.doctorEarning.aggregate({
-      where: { doctorId, status: 'AVAILABLE' },
-      _sum: { netAmount: true },
-      _count: { _all: true },
-    }),
-    prisma.doctorEarning.aggregate({
-      where: { doctorId, status: 'PAID' },
-      _sum: { netAmount: true },
-      _count: { _all: true },
-    }),
-    prisma.doctorEarning.aggregate({
-      where: { doctorId, status: { not: 'CANCELLED' } },
-      _sum: { netAmount: true, grossAmount: true, platformFee: true },
-      _count: { _all: true },
-    }),
-  ]);
+  // 3. Calculate totals
+  const pending = earnings.filter(e => e.status === 'PENDING');
+  const available = earnings.filter(e => e.status === 'AVAILABLE');
+  const paid = earnings.filter(e => e.status === 'PAID');
+
+  const sum = (arr: any[]) => arr.reduce((acc, curr) => acc + Number(curr.netAmount), 0);
+
+  const pendingAmount = sum(pending);
+  const availableAmount = Math.max(0, sum(available) - totalRequested); // Deduct requested amount
+  const paidAmount = sum(paid);
 
   return {
-    pending: { amount: Number(pending._sum.netAmount || 0), count: pending._count._all },
-    available: { amount: Number(available._sum.netAmount || 0), count: available._count._all },
-    paid: { amount: Number(paid._sum.netAmount || 0), count: paid._count._all },
+    pending: { amount: pendingAmount, count: pending.length },
+    available: { amount: availableAmount, count: available.length },
+    paid: { amount: paidAmount, count: paid.length },
     lifetime: {
-      net: Number(total._sum.netAmount || 0),
-      gross: Number(total._sum.grossAmount || 0),
-      platformFee: Number(total._sum.platformFee || 0),
-      count: total._count._all,
-    },
+      gross: earnings.reduce((acc, curr) => acc + Number(curr.grossAmount), 0),
+      platformFee: earnings.reduce((acc, curr) => acc + Number(curr.platformFee), 0),
+      net: earnings.reduce((acc, curr) => acc + Number(curr.netAmount), 0),
+      count: earnings.length,
+    }
   };
 }
 
-/**
- * Creates a payout request from available earnings.
- */
-export async function requestPayout(params: {
+export async function recordAppointmentEarning(data: {
   doctorId: string;
-  amount?: number;
-  method: string;
-  accountInfo: any;
-  notes?: string;
+  appointmentId: string;
+  patientId: string;
+  grossAmount: number;
+  platformFee?: number;
+  netAmount?: number;
 }) {
-  const availableEarnings = await prisma.doctorEarning.findMany({
-    where: { doctorId: params.doctorId, status: 'AVAILABLE' },
-    orderBy: { createdAt: 'asc' },
-  });
-
-  const totalAvailable = availableEarnings.reduce((s, e) => s + Number(e.netAmount), 0);
-  if (totalAvailable <= 0) throw new Error('No available earnings to withdraw');
-
-  const payoutAmount = params.amount && params.amount > 0 ? params.amount : totalAvailable;
-  if (payoutAmount > totalAvailable) throw new Error('Insufficient available balance');
-
-  // Select earnings to pay out (FIFO until amount covered)
-  const earningsToPay: any[] = [];
-  let remaining = payoutAmount;
-  for (const e of availableEarnings) {
-    if (remaining <= 0) break;
-    earningsToPay.push(e);
-    remaining -= Number(e.netAmount);
-  }
-
-  const count = await prisma.doctorPayout.count();
-  const payoutNumber = generatePayoutNumber(count + 1);
-
-  return prisma.$transaction(async (tx) => {
-    const payout = await tx.doctorPayout.create({
-      data: {
-        payoutNumber,
-        doctorId: params.doctorId,
-        amount: payoutAmount,
-        status: 'REQUESTED',
-        method: params.method,
-        accountInfo: params.accountInfo,
-        notes: params.notes || null,
-      },
-    });
-
-    // Link earnings to payout
-    await tx.doctorEarning.updateMany({
-      where: { id: { in: earningsToPay.map(e => e.id) } },
-      data: { payoutId: payout.id },
-    });
-
-    return payout;
+  const platformFee = data.platformFee || 0;
+  const netAmount = data.netAmount || (data.grossAmount - platformFee);
+  
+  return prisma.doctorEarning.create({
+    data: {
+      doctorId: data.doctorId,
+      appointmentId: data.appointmentId,
+      patientId: data.patientId,
+      grossAmount: data.grossAmount,
+      platformFee: platformFee,
+      netAmount: netAmount,
+      status: 'PENDING' as any,
+    }
   });
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Send, User, Stethoscope, Clock } from "lucide-react";
 
 export default function ChatRoomPage() {
   const params = useParams();
@@ -13,105 +13,108 @@ export default function ChatRoomPage() {
 
   const [thread, setThread] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
-  const [isDoctor, setIsDoctor] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const load = async (showLoader = false) => {
-    if (showLoader) setLoading(true);
-    const res = await fetch(`/api/chat/threads/${threadId}/messages`, { credentials: "include" });
-    if (!res.ok) { setLoading(false); return; }
-    const data = await res.json();
-    setThread(data.thread);
-    setMessages(data.messages || []);
-    setIsDoctor(data.isDoctor);
-    setLoading(false);
+  const loadChat = async () => {
+    try {
+      const res = await fetch(`/api/chat/threads/${threadId}/messages`);
+      const data = await res.json();
+      if (data.success) {
+        setThread(data.thread);
+        setMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (!user || !threadId) return;
-    load(true);
-  }, [user, threadId]);
-
-  // Poll for new messages every 5 seconds
-  useEffect(() => {
-    if (!user || !threadId) return;
-    const interval = setInterval(() => load(false), 5000);
+    loadChat();
+    const interval = setInterval(loadChat, 5000); // Poll every 5s
     return () => clearInterval(interval);
-  }, [user, threadId]);
+  }, [threadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
+
     setSending(true);
-    const res = await fetch(`/api/chat/threads/${threadId}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ message: newMessage }),
-    });
-    setSending(false);
-    if (res.ok) {
-      setNewMessage("");
-      load(false);
+    try {
+      const res = await fetch(`/api/chat/threads/${threadId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: newMessage.trim() })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setMessages([...messages, data.message]);
+        setNewMessage("");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSending(false);
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-slate-500">Loading...</div>;
-  if (!thread) return <div className="p-6 text-center text-slate-500">Thread not found</div>;
+  if (loading) {
+    return (
+      <div className="h-[100dvh] flex flex-col items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-blue-600 mb-4" size={32} />
+        <p className="text-slate-500">Loading chat...</p>
+      </div>
+    );
+  }
+  
+  if (!thread) return <div className="p-6 text-center text-red-500">Chat not found.</div>;
 
-  const otherName = isDoctor ? thread.patient?.name : `Dr. ${thread.doctor?.user?.name}`;
-  const otherSub = isDoctor ? thread.patient?.phone : thread.doctor?.specialty;
-  const otherIcon = isDoctor ? User : Stethoscope;
-  const OtherIcon = otherIcon;
+  const otherPersonName = user?.id === thread.doctor?.userId 
+    ? thread.patient?.name 
+    : `Dr. ${thread.doctor?.user?.name}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="flex flex-col h-[100dvh] bg-[#efeae2] fixed inset-0 z-[100]">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-20">
-        <button onClick={() => router.back()} className="p-2 hover:bg-slate-100 rounded-lg">
-          <ArrowLeft size={20} />
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 shadow-sm">
+        <button onClick={() => router.back()} className="p-2 hover:bg-slate-100 rounded-full transition">
+          <ArrowLeft size={20} className="text-slate-600" />
         </button>
-        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-          <OtherIcon className="text-blue-600" size={18} />
+        <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">
+          {otherPersonName?.charAt(0).toUpperCase() || 'U'}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-bold text-slate-800 truncate">{otherName}</div>
-          {otherSub && <div className="text-xs text-slate-500 truncate">{otherSub}</div>}
+        <div className="flex-1">
+          <h3 className="font-bold text-slate-800">{otherPersonName || 'User'}</h3>
+          <p className="text-xs text-slate-500">Online</p>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
         {messages.length === 0 ? (
-          <div className="text-center text-slate-500 text-sm py-12">
-            No messages yet. Start the conversation.
+          <div className="text-center text-slate-500 text-sm bg-white/80 p-4 rounded-xl mx-auto w-fit shadow-sm border border-slate-200 my-auto">
+            Start the conversation!
           </div>
         ) : (
-          messages.map((m) => {
-            const isMine = m.senderId === user?.id;
+          messages.map((msg) => {
+            const isMe = msg.senderId === user?.id;
             return (
-              <div key={m.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${
-                  isMine ? "bg-blue-600 text-white" : "bg-white text-slate-800 border border-slate-100"
-                }`}>
-                  {!isMine && (
-                    <div className="text-[10px] opacity-75 mb-0.5 font-medium">
-                      {m.senderRole === "DOCTOR" ? "Doctor" : "Patient"}
-                    </div>
-                  )}
-                  <div className="text-sm break-words whitespace-pre-wrap">{m.message}</div>
-                  <div className={`text-[10px] mt-1 flex items-center gap-1 ${isMine ? "text-blue-100" : "text-slate-400"}`}>
-                    <Clock size={9} />
-                    {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    {isMine && m.isRead && <span className="ml-1">✓✓</span>}
-                  </div>
+              <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white text-slate-800 rounded-bl-sm'}`}>
+                  <p>{msg.message}</p>
+                  <span className={`text-[10px] mt-1 block ${isMe ? 'text-blue-200 text-right' : 'text-slate-400'}`}>
+                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
               </div>
             );
@@ -120,16 +123,25 @@ export default function ChatRoomPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <form onSubmit={sendMessage} className="bg-white border-t border-slate-200 p-3 flex gap-2 sticky bottom-0">
-        <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-        <button type="submit" disabled={sending || !newMessage.trim()}
-          className="bg-blue-600 text-white p-3 rounded-xl disabled:opacity-50 flex items-center justify-center">
-          <Send size={18} />
-        </button>
-      </form>
+      {/* Fixed Input Area at Bottom */}
+      <div className="bg-white p-3 pb-safe border-t border-slate-200 shrink-0">
+        <form onSubmit={handleSendMessage} className="flex items-center gap-2 max-w-4xl mx-auto w-full">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 bg-slate-100 border-none rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button 
+            type="submit" 
+            disabled={!newMessage.trim() || sending}
+            className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition disabled:opacity-50 shadow-md shrink-0"
+          >
+            <Send size={20} className={sending ? "opacity-50" : "ml-1"} />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

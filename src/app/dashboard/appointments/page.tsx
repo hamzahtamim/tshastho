@@ -112,10 +112,10 @@ export default function PatientAppointmentsPage() {
             <Stethoscope className="text-blue-600" size={18} />
           </div>
           <div className="min-w-0">
-            <div className="font-bold text-slate-800 truncate">
+            <div className="font-extrabold text-slate-900 truncate">
               Dr. {apt.doctor?.user?.name || "Doctor"}
             </div>
-            <div className="text-xs text-blue-600">{apt.doctor?.specialty}</div>
+            <div className="text-xs font-bold text-blue-700">{apt.doctor?.specialty}</div>
           </div>
         </div>
         <span className={`px-2 py-1 rounded-full text-[10px] font-medium whitespace-nowrap ${statusColor(apt.status)}`}>
@@ -125,29 +125,29 @@ export default function PatientAppointmentsPage() {
 
       <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
         <div className="bg-slate-50 p-2 rounded-lg flex items-center gap-1.5">
-          <Calendar size={12} className="text-slate-500" />
-          <span className="font-medium">{apt.date}</span>
+          <Calendar size={12} className="text-slate-600" />
+          <span className="font-semibold text-slate-800">{apt.date}</span>
         </div>
         <div className="bg-slate-50 p-2 rounded-lg flex items-center gap-1.5">
-          <Clock size={12} className="text-slate-500" />
-          <span className="font-medium">{apt.time}</span>
+          <Clock size={12} className="text-slate-600" />
+          <span className="font-semibold text-slate-800">{apt.time}</span>
         </div>
       </div>
 
       {apt.consultationFee && Number(apt.consultationFee) > 0 && (
-        <div className="text-xs text-slate-600 mb-3">
+        <div className="text-xs text-slate-800 mb-3">
           Fee: <span className="font-bold text-slate-800">৳ {Number(apt.consultationFee).toFixed(0)}</span>
         </div>
       )}
 
       {apt.symptoms && (
-        <div className="text-xs text-slate-600 bg-amber-50 p-2 rounded-lg mb-3">
+        <div className="text-xs text-slate-800 bg-amber-50 p-2 rounded-lg mb-3">
           <span className="font-medium">Symptoms:</span> {apt.symptoms}
         </div>
       )}
 
       {apt.consultationNotes && apt.status === "COMPLETED" && (
-        <div className="text-xs text-slate-600 bg-green-50 p-2 rounded-lg mb-3">
+        <div className="text-xs text-slate-800 bg-green-50 p-2 rounded-lg mb-3">
           <span className="font-medium">Doctor's notes:</span> {apt.consultationNotes}
         </div>
       )}
@@ -202,7 +202,7 @@ export default function PatientAppointmentsPage() {
         {TABS.map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)}
             className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap ${
-              tab === t.k ? "bg-blue-600 text-white" : "bg-white border border-slate-200"
+              tab === t.k ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
             }`}>
             {t.label}
           </button>
@@ -210,11 +210,11 @@ export default function PatientAppointmentsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center text-slate-500 p-8">Loading...</div>
+        <div className="text-center text-slate-700 font-semibold p-8">Loading...</div>
       ) : appointments.length === 0 ? (
         <div className="bg-white p-8 text-center rounded-2xl">
           <AlertCircle className="mx-auto text-slate-300 mb-2" size={32} />
-          <p className="text-slate-500 text-sm mb-3">No appointments</p>
+          <p className="text-slate-700 font-semibold text-sm mb-3">No appointments</p>
           <Link href="/doctors"
             className="inline-flex items-center gap-1 text-sm text-blue-600 font-medium">
             <Stethoscope size={14} /> Find a Doctor
@@ -224,13 +224,13 @@ export default function PatientAppointmentsPage() {
         <>
           {upcoming.length > 0 && (
             <>
-              <h2 className="text-sm font-bold text-slate-600 mb-2 mt-2">Upcoming</h2>
+              <h2 className="text-sm font-bold text-slate-800 mb-2 mt-2">Upcoming</h2>
               <div className="space-y-3 mb-6">{upcoming.map(renderCard)}</div>
             </>
           )}
           {past.length > 0 && (
             <>
-              <h2 className="text-sm font-bold text-slate-600 mb-2">Past</h2>
+              <h2 className="text-sm font-bold text-slate-800 mb-2">Past</h2>
               <div className="space-y-3">{past.map(renderCard)}</div>
             </>
           )}
@@ -250,25 +250,25 @@ export default function PatientAppointmentsPage() {
             <div className="p-4 space-y-3">
               <div className="bg-slate-50 p-3 rounded-xl text-sm">
                 <div className="font-medium">Dr. {selected.doctor?.user?.name}</div>
-                <div className="text-xs text-slate-500">{selected.date} • {selected.time}</div>
+                <div className="text-xs text-slate-700 font-medium">{selected.date} • {selected.time}</div>
               </div>
 
               {action === "RESCHEDULE" && (
                 <>
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">New Date *</label>
+                    <label className="text-xs font-medium text-slate-800 mb-1 block">New Date *</label>
                     <input type="date" value={newDate}
                       onChange={(e) => setNewDate(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">New Time *</label>
+                    <label className="text-xs font-medium text-slate-800 mb-1 block">New Time *</label>
                     <input type="time" value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Reason</label>
+                    <label className="text-xs font-medium text-slate-800 mb-1 block">Reason</label>
                     <textarea value={reason} onChange={(e) => setReason(e.target.value)}
                       rows={2} placeholder="Optional"
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
@@ -278,7 +278,7 @@ export default function PatientAppointmentsPage() {
 
               {action === "CANCEL" && (
                 <div>
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Cancellation Reason</label>
+                  <label className="text-xs font-medium text-slate-800 mb-1 block">Cancellation Reason</label>
                   <textarea value={reason} onChange={(e) => setReason(e.target.value)}
                     rows={3} placeholder="Please let us know why"
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
@@ -286,7 +286,7 @@ export default function PatientAppointmentsPage() {
               )}
 
               {action === "PATIENT_CONFIRM" && (
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-800">
                   Confirm that you'll attend this appointment on {selected.date} at {selected.time}.
                 </p>
               )}

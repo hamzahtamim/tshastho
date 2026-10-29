@@ -1,30 +1,42 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/auth/guards';
-export async function POST(req: Request) {
-  const auth = await requireRole(['DOCTOR', 'SUPER_ADMIN']);
-  if (auth.error) return auth.error;
+import { getCurrentUser } from '@/lib/auth/user';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (user.role !== 'DOCTOR') {
+    return NextResponse.json({ error: `You are logged in as ${user.role}, not a DOCTOR.` }, { status: 403 });
+  }
 
   try {
-        const user = await prisma.user.findFirst({ where: { email: auth.user.email }});
-    
-    if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
-
-    const doctor = await prisma.doctor.findFirst({ 
+    // 1. Fetch Doctor Profile (including User data)
+    const doctor: any = await prisma.doctor.findUnique({
       where: { userId: user.id },
-      include: { user: true }
+      include: { user: true } as any
     });
-    
-    if (!doctor) return NextResponse.json({ message: "Doctor profile not found" }, { status: 404 });
 
-    const appointments = await prisma.appointment.findMany({
+    if (!doctor) {
+      return NextResponse.json({ error: 'Doctor record missing in database for this user.' }, { status: 404 });
+    }
+
+    // 2. Fetch Appointments
+    // FIX: 'patient' in Appointment model is directly the User model.
+    // So we just need to include 'patient: true' without nesting 'user: true'.
+    const appointments: any[] = await prisma.appointment.findMany({
       where: { doctorId: doctor.id },
-      include: { patient: true },
-      orderBy: { createdAt: 'desc' }
+      include: { patient: true } as any,
+      orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ appointments, doctor }, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ message: "Error", error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: true, doctor, appointments });
+  } catch (error: any) {
+    console.error('[DOCTOR_APPTS_ERROR]', error);
+    return NextResponse.json({ error: error.message || 'Failed to fetch data' }, { status: 500 });
   }
 }

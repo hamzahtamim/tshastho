@@ -3,10 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  CheckCircle, XCircle, User, Stethoscope, Pill, LogOut,
-  Settings, BarChart3, TrendingUp, Users, CreditCard, Clock, Activity, ShieldCheck
-} from "lucide-react";
+import { CheckCircle, XCircle, User, Stethoscope, Pill, LogOut, Settings, BarChart3, TrendingUp, Users, CreditCard, Clock, Activity, ShieldCheck, PhoneCall, Wallet } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -56,10 +53,12 @@ export default function AdminDashboard() {
     { href: "/admin/settings/payments", title: "Payment Methods", icon: CreditCard, color: "from-purple-500 to-pink-600", desc: "Manage bKash, Nagad" },
     { href: "/admin/settings/gateways", title: "Gateways", icon: ShieldCheck, color: "from-slate-700 to-slate-900", desc: "SSLCommerz API" },
     { href: "/admin/topups", title: "Top-Ups", icon: Clock, color: "from-amber-400 to-orange-500", desc: "Pending approvals" },
+    { href: "/admin/payouts", title: "Payouts", icon: Wallet, color: "from-blue-500 to-indigo-600", desc: "Doctor withdrawals" },
     { href: "/admin/transactions", title: "Transactions", icon: Activity, color: "from-teal-400 to-cyan-600", desc: "Wallet activity" },
     { href: "/admin/analytics", title: "Analytics", icon: TrendingUp, color: "from-emerald-500 to-green-700", desc: "Revenue & stats" },
     { href: "/admin/customers", title: "Customers", icon: Users, color: "from-orange-500 to-red-600", desc: "View all users" },
     { href: "/admin/settings", title: "Settings", icon: Settings, color: "from-blue-500 to-indigo-600", desc: "Platform config" },
+    { href: "/admin/settings/hotline", title: "Hotline", icon: PhoneCall, color: "from-emerald-500 to-teal-600", desc: "Support number" },
   ];
 
   if (loading) return <div className="p-6 text-center text-slate-500">Loading dashboard...</div>;

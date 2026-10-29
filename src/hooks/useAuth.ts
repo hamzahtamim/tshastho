@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 export type AuthUser = {
+  avatarUrl?: string | null;
   id: string;
   name: string | null;
   email: string;

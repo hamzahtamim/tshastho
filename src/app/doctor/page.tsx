@@ -1,188 +1,179 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, User, Check, X, LogOut, Bell } from "lucide-react";
+import { Calendar, Clock, User, Check, X, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function DoctorDashboard() {
   const { user, loading: authLoading } = useAuth();
-
   const router = useRouter();
+  
   const [doctor, setDoctor] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [greeting, setGreeting] = useState("Hello");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const loadData = () => {
-    const email = user?.email;
-    if (!email) { setLoading(false); return; }
-
-    fetch("/api/doctor/my-appointments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.doctor) setDoctor(data.doctor);
-      if (data.appointments) setAppointments(data.appointments);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/doctor/my-appointments', { cache: 'no-store' });
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        setDoctor(data.doctor);
+        setAppointments(data.appointments || []);
+        setError("");
+      } else {
+        setError(data.error || "Failed to load profile");
+      }
+    } catch (err) {
+      setError("Network error occurred");
+    } finally {
       setLoading(false);
-    })
-    .catch(() => setLoading(false));
+    }
   };
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) { router.push("/login"); return; }
+
     const hour = new Date().getHours();
-    let greetText = "Good Morning";
-    if (hour >= 12 && hour < 17) greetText = "Good Afternoon";
-    else if (hour >= 17 && hour < 21) greetText = "Good Evening";
-    else if (hour >= 21 || hour < 5) greetText = "Good Night";
-    setGreeting(greetText);
+    let text = "Good Morning";
+    if (hour >= 12 && hour < 17) text = "Good Afternoon";
+    else if (hour >= 17 && hour < 21) text = "Good Evening";
+    else if (hour >= 21 || hour < 5) text = "Good Night";
+    setGreeting(text);
+
     loadData();
-  }, []);
+  }, [user, authLoading, router]);
 
   const updateStatus = async (appointmentId: string, status: string) => {
-    await fetch("/api/doctor/appointments/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    await fetch('/api/doctor/appointments/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ appointmentId, status }),
     });
     loadData();
   };
 
-  const handleLogout = () => {
+  if (authLoading || loading) {
+    return <div className="p-10 text-center text-slate-500">Loading doctor dashboard...</div>;
+  }
 
-    document.cookie = "userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie = "userEmail=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    router.push("/login");
-  };
+  if (error || !doctor) {
+    return (
+      <div className="p-6 max-w-md mx-auto mt-10 text-center">
+        <div className="bg-red-50 border border-red-200 text-red-600 p-6 rounded-2xl mb-4 flex flex-col items-center">
+          <AlertCircle size={40} className="mb-3" />
+          <h2 className="font-bold text-lg mb-1">Profile Error</h2>
+          <p className="text-sm">{error || "Doctor profile not found for this account."}</p>
+          <p className="text-xs mt-2 text-red-500">Are you logged in with a Patient account instead?</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (loading) return <div className="p-6 text-slate-500">Loading...</div>;
-  if (!doctor) return <div className="p-6">Doctor profile not found. Please login again.</div>;
-
-  const pending = appointments.filter(a => a.status === "PENDING");
+  const pending = appointments.filter(a => a.status === "REQUESTED");
   const confirmed = appointments.filter(a => a.status === "CONFIRMED");
   const completed = appointments.filter(a => a.status === "COMPLETED");
-  const initial = doctor.user?.name?.charAt(0)?.toUpperCase() || "D";
+  const initial = doctor.user?.name?.charAt(0).toUpperCase() || "D";
+
+  const doctorName = doctor.user?.name?.toLowerCase().startsWith('dr') || doctor.user?.name?.toLowerCase() === 'doctor' 
+    ? doctor.user?.name 
+    : `Dr. ${doctor.user?.name}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10">
-      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-blue-600">Tshastho</span>
-          <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">Doctor</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/doctor/notifications" className="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center relative">
-            <Bell size={20} className="text-slate-500" />
-            {pending.length > 0 && (
-              <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                {pending.length}
-              </span>
-            )}
-          </Link>
-          <Link href="/doctor/profile" className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm hover:bg-blue-200 transition">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      {/* Profile Banner */}
+      <div className="bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-3xl p-6 mb-6 shadow-lg">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-white/30">
             {initial}
-          </Link>
-          <button onClick={handleLogout} className="text-red-500 p-2 rounded-full hover:bg-red-50">
-            <LogOut size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold">{greeting}, {doctorName}!</h1>
+            <p className="text-blue-100 text-sm">{doctor.specialty}</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/10">
+            <p className="text-2xl font-bold">{pending.length}</p>
+            <p className="text-[10px] text-blue-100 uppercase font-semibold">Requested</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/10">
+            <p className="text-2xl font-bold">{confirmed.length}</p>
+            <p className="text-[10px] text-blue-100 uppercase font-semibold">Confirmed</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 text-center border border-white/10">
+            <p className="text-2xl font-bold">{completed.length}</p>
+            <p className="text-[10px] text-blue-100 uppercase font-semibold">Completed</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Appointment List */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-slate-800">Recent Appointments</h2>
+        <Link href="/doctor/appointments" className="text-sm text-blue-600 font-medium hover:underline">View All</Link>
+      </div>
+
+      {appointments.length === 0 ? (
+        <div className="bg-white p-10 rounded-2xl text-center border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+            <Calendar size={28} />
+          </div>
+          <h3 className="text-slate-800 font-bold text-lg mb-1">No appointments yet</h3>
+          <p className="text-slate-500 text-sm mb-6 max-w-xs">When patients book an appointment, it will appear here.</p>
+          <button onClick={loadData} className="px-6 py-2.5 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition text-sm">
+            Refresh
           </button>
         </div>
-      </header>
-
-      <div className="max-w-5xl mx-auto p-6">
-        <div className="bg-gradient-to-br from-blue-600 to-cyan-600 text-white rounded-2xl p-6 mb-8 shadow-lg">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
-              {initial}
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">{greeting}, {doctor.user?.name}!</h1>
-              <p className="text-blue-100 text-sm">{doctor.specialty}</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            <div className="bg-white/10 rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold">{pending.length}</p>
-              <p className="text-xs text-blue-100">Pending</p>
-            </div>
-            <div className="bg-white/10 rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold">{confirmed.length}</p>
-              <p className="text-xs text-blue-100">Confirmed</p>
-            </div>
-            <div className="bg-white/10 rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold">{completed.length}</p>
-              <p className="text-xs text-blue-100">Completed</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500">Your Booking Number</p>
-            <p className="text-lg font-bold text-green-700">{doctor.bookingPhone || "Not set"}</p>
-          </div>
-          <Link href="/doctor/profile" className="text-xs bg-green-600 text-white px-4 py-2 rounded-lg font-medium">
-            Edit Profile
-          </Link>
-        </div>
-
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Appointment Requests</h2>
-
-        {appointments.length === 0 ? (
-          <div className="bg-white p-8 rounded-2xl text-center text-slate-500">
-            No appointments yet.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {appointments.map((apt) => (
-              <div key={apt.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                <div className="flex flex-col md:flex-row justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                      <User size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-800">{apt.patient?.name || "Patient"}</h3>
-                      <p className="text-sm text-slate-500">{apt.patient?.phone}</p>
-                    </div>
+      ) : (
+        <div className="space-y-3">
+          {appointments.slice(0, 5).map((apt) => (
+            <div key={apt.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                    <User size={20} />
                   </div>
-                  <div className="flex items-center gap-6 text-sm text-slate-600">
-                    <div className="flex items-center gap-2"><Calendar size={16} /> {apt.date}</div>
-                    <div className="flex items-center gap-2"><Clock size={16} /> {apt.time}</div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      apt.status === "PENDING" ? "bg-yellow-100 text-yellow-600" :
-                      apt.status === "CONFIRMED" ? "bg-blue-100 text-blue-600" :
-                      apt.status === "COMPLETED" ? "bg-green-100 text-green-600" :
-                      "bg-red-100 text-red-600"
-                    }`}>{apt.status}</span>
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm">{apt.patient?.name || "Patient"}</h3>
+                    <p className="text-xs text-slate-500">{apt.patient?.phone}</p>
                   </div>
                 </div>
-
-                {apt.status === "PENDING" && (
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
-                    <button onClick={() => updateStatus(apt.id, "CONFIRMED")} className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2.5 rounded-xl text-sm font-medium">
-                      <Check size={16} /> Accept
-                    </button>
-                    <button onClick={() => updateStatus(apt.id, "REJECTED")} className="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-600 py-2.5 rounded-xl text-sm font-medium">
-                      <X size={16} /> Reject
-                    </button>
-                  </div>
-                )}
-
-                {apt.status === "CONFIRMED" && (
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
-                    <button onClick={() => updateStatus(apt.id, "COMPLETED")} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium">
-                      Mark as Completed
-                    </button>
-                  </div>
-                )}
+                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                  apt.status === 'REQUESTED' ? 'bg-yellow-100 text-yellow-700' :
+                  apt.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
+                  'bg-green-100 text-green-700'
+                }`}>
+                  {apt.status}
+                </span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              
+              <div className="flex items-center gap-4 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                <div className="flex items-center gap-1"><Calendar size={14} /> {new Date(apt.date).toLocaleDateString()}</div>
+                <div className="flex items-center gap-1"><Clock size={14} /> {apt.time}</div>
+              </div>
+
+              {apt.status === "REQUESTED" && (
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => updateStatus(apt.id, "CONFIRMED")} className="flex-1 flex items-center justify-center gap-1 bg-green-600 text-white py-2 rounded-lg text-xs font-semibold hover:bg-green-700 transition">
+                    <Check size={14} /> Accept
+                  </button>
+                  <button onClick={() => updateStatus(apt.id, "REJECTED")} className="flex-1 flex items-center justify-center gap-1 bg-red-50 text-red-600 py-2 rounded-lg text-xs font-semibold hover:bg-red-100 transition">
+                    <X size={14} /> Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

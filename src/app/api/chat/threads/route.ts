@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     if (error instanceof z.ZodError) {
       return errorResponse(ErrorCodes.VALIDATION_ERROR, error.issues[0].message, 400);
     }
+    console.error('[CHAT_THREAD_POST_ERROR]', error);
     return errorResponse(ErrorCodes.INTERNAL_ERROR, 'Failed', 500);
   }
 }

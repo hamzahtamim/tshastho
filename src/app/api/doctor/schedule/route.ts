@@ -8,16 +8,19 @@ async function getDoctor(user: any) {
   return prisma.doctor.findFirst({ where: { userId: user.id } });
 }
 
+export const dynamic = 'force-dynamic';
+
 const schema = z.object({
   schedules: z.array(z.object({
     dayOfWeek: z.enum(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']),
-    startTime: z.string().regex(/^\d{2}:\d{2}$/),
-    endTime: z.string().regex(/^\d{2}:\d{2}$/),
-    slotDuration: z.coerce.number().int().min(5).max(120).default(30),
-    maxPatients: z.coerce.number().int().min(1).max(100).default(10),
+    startTime: z.string().min(1),
+    endTime: z.string().min(1),
+    slotDuration: z.coerce.number().default(30),
+    maxPatients: z.coerce.number().default(10),
     slotType: z.enum(['IN_PERSON', 'ONLINE', 'BOTH']).default('IN_PERSON'),
-    chamberAddress: z.string().optional(),
-    consultationFee: z.coerce.number().min(0).optional(),
+    chamberAddress: z.string().optional().nullable(),
+    chamberId: z.string().optional().nullable(), // <--- FIXED: Added chamberId
+    consultationFee: z.coerce.number().default(0),
   })),
 });
 
@@ -31,6 +34,7 @@ export async function GET() {
   const schedules = await prisma.doctorSchedule.findMany({
     where: { doctorId: doctor.id },
     orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+    include: { chamber: true }
   });
 
   return NextResponse.json({ success: true, schedules });
@@ -60,6 +64,7 @@ export async function PUT(req: Request) {
             maxPatients: s.maxPatients,
             slotType: s.slotType,
             chamberAddress: s.chamberAddress || null,
+            chamberId: s.chamberId || null, // <--- FIXED: Added chamberId mapping
             consultationFee: s.consultationFee,
           })),
         });
@@ -69,6 +74,7 @@ export async function PUT(req: Request) {
     const schedules = await prisma.doctorSchedule.findMany({
       where: { doctorId: doctor.id },
       orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+      include: { chamber: true }
     });
 
     return NextResponse.json({ success: true, schedules });
