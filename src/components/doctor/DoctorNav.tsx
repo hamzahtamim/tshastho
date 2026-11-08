@@ -72,7 +72,14 @@ export default function DoctorNav() {
     if (cat.title === 'Practice Management') return null;
 
     if (cat.title === 'Clinical') {
-       if (isStaff) return { title: 'Staff Settings', links: [{ name: 'Logout', href: '/login', icon: LogOut }] };
+       if (isStaff) {
+         let staffLinks = [];
+         if (perms.canViewAppointments !== false) {
+           staffLinks.push({ name: "Telemedicine", href: "/doctor/telemedicine", icon: Video });
+         }
+         staffLinks.push({ name: 'Logout', href: '/login', icon: LogOut });
+         return { title: 'Staff Settings', links: staffLinks };
+       }
        let links = cat.links.filter((l: any) => ['New Prescription', 'Online Rx', 'Rx Templates'].includes(l.name));
        if (!perms.canCreateLocalRx) links = [];
        return { ...cat, links };

@@ -19,6 +19,7 @@ export default function DoctorDetailPage() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [booking, setBooking] = useState(false);
+  const [bookingType, setBookingType] = useState<"ONLINE" | "OFFLINE">("ONLINE");
   const [message, setMessage] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"WALLET" | "CASH">("WALLET");
   const [slotFilter, setSlotFilter] = useState<"ALL" | "ONLINE" | "IN_PERSON">("ALL");
@@ -63,10 +64,17 @@ export default function DoctorDetailPage() {
   const loadSlots = async (date: string) => {
     setSlotsLoading(true);
     setSelectedSlot(null);
-    const res = await fetch(`/api/doctors/${doctorId}/slots?date=${date}`);
-    const data = await res.json();
-    setSlots(data.slots || []);
-    setSlotsLoading(false);
+    try {
+      const res = await fetch(`/api/doctors/${doctorId}/slots?date=${date}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load slots");
+      const data = await res.json();
+      setSlots(data.slots || []);
+    } catch (err) {
+      console.error(err);
+      setSlots([]);
+    } finally {
+      setSlotsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -152,26 +160,36 @@ export default function DoctorDetailPage() {
     setBooking(true);
     setMessage("");
 
-    const res = await fetch("/api/appointments/book", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        doctorId,
-        date: selectedDate,
-        time: selectedSlot.startTime,
-        slotType: selectedSlot.slotType,
-        fee: selectedSlot.consultationFee || doctor?.consultationFee,
-      }),
-    });
+    try {
+      const res = await fetch("/api/appointments/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          doctorId,
+          date: selectedDate,
+          time: selectedSlot.startTime,
+          slotType: selectedSlot.slotType === 'BOTH' ? bookingType : selectedSlot.slotType,
+          fee: Number(
+            (selectedSlot.slotType === 'BOTH' && bookingType === 'ONLINE') ? (doctor?.onlineFee || selectedSlot.consultationFee || 0)
+            : (selectedSlot.slotType === 'BOTH' && bookingType === 'OFFLINE') ? (doctor?.offlineFee || selectedSlot.consultationFee || 0)
+            : (selectedSlot.consultationFee || doctor?.consultationFee || 0)
+          ),
+        }),
+      });
 
-    const data = await res.json();
-    setBooking(false);
-    if (res.ok) {
-      setMessage("✅ Appointment requested! Check your dashboard.");
-      setTimeout(() => router.push("/dashboard/appointments"), 1500);
-    } else {
-      setMessage(data.message || "Booking failed");
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("✅ Appointment requested! Check your dashboard.");
+        setTimeout(() => router.push("/dashboard/appointments"), 1500);
+      } else {
+        setMessage(data.message || data.error || "Booking failed");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Network error. Please try again.");
+    } finally {
+      setBooking(false);
     }
   };
 
@@ -642,7 +660,18 @@ export default function DoctorDetailPage() {
                 ৳ {Number(selectedSlot.consultationFee || doctor.consultationFee || 0).toFixed(0)}
               </p>
             </div>
-            <button onClick={handleBook} disabled={booking}
+            
+              {selectedSlot && selectedSlot.slotType === 'BOTH' && (
+                <div className="mb-4 bg-blue-50 p-3 rounded-xl border border-blue-100">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Consultation Type</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setBookingType('ONLINE')} className={`flex-1 py-2 rounded-lg text-sm font-medium border ${bookingType === 'ONLINE' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300'}`}>Online (Video)</button>
+                    <button type="button" onClick={() => setBookingType('OFFLINE')} className={`flex-1 py-2 rounded-lg text-sm font-medium border ${bookingType === 'OFFLINE' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300'}`}>In-Person</button>
+                  </div>
+                </div>
+              )}
+              
+              <button onClick={handleBook} disabled={booking}
               className="bg-blue-600 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 flex items-center gap-2">
               <CheckCircle size={16} /> {booking ? "Booking..." : "Book Appointment"}
             </button>

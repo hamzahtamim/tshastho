@@ -1,25 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
+import Script from "next/script";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./globals.css";
 import PWAInstallPrompt from "@/components/pwa/InstallPrompt";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// বাংলা comment: Tshastho PWA metadata
+// Tshastho PWA metadata
 export const metadata: Metadata = {
   title: {
     default: "Tshastho - Health & Pharmacy Platform",
-    template: "%s · Tshastho",
+    template: "%s - Tshastho",
   },
-  description: "Bangladesh's health-tech SaaS — pharmacy, doctor, patient management",
+  description: "Bangladesh's health-tech SaaS – pharmacy, doctor, patient management",
   applicationName: "Tshastho",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -42,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#8b5cf6",
+  themeColor: "#0d9488",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -51,33 +48,20 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html
-      lang="bn"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${inter.variable} h-full`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Tshastho" />
+        <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
       </head>
-      <body className="min-h-full flex flex-col">
-        {children}
+      <body className="font-sans antialiased h-full bg-slate-50 text-slate-900">
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+          {children}
+        </GoogleOAuthProvider>
         <PWAInstallPrompt />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function(){});
-                });
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   );

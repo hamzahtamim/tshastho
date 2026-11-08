@@ -8,8 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-mono: monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +22,45 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
+}
+
+/* =========================================
+   LiveKit Premium Custom Theme
+   ========================================= */
+[data-lk-theme="default"] {
+  --lk-bg: #0f172a; /* slate-900 */
+  --lk-fg: #f8fafc; /* slate-50 */
+  --lk-primary: #2563eb; /* blue-600 */
+  --lk-primary-hover: #1d4ed8; /* blue-700 */
+  --lk-danger: #ef4444; /* red-500 */
+  --lk-border-radius: 12px;
+  --lk-control-bar-height: 70px;
+}
+
+.lk-video-conference {
+  height: 100%;
+  width: 100%;
+  background-color: var(--lk-bg);
+}
+
+/* কন্ট্রোল বার সুন্দর করা */
+.lk-control-bar {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(10px);
+  border-top: 1px solid #334155;
+  padding: 12px !important;
+}
+
+/* বাটনগুলোর ডিজাইন */
+.lk-button {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease;
+}
+
+/* চ্যাট প্যানেল সুন্দর করা */
+.lk-chat {
+  background-color: #1e293b !important;
+  border-left: 1px solid #334155;
 }

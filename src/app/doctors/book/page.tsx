@@ -29,6 +29,13 @@ function BookingForm() {
       return;
     }
 
+    
+    if (!doctorId) {
+      setMessage("Doctor ID is missing from the URL. Please go back and select a doctor.");
+      setLoading(false);
+      return;
+    }
+    
     const res = await fetch("/api/appointments/book", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

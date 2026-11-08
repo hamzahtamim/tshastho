@@ -3,9 +3,11 @@ import { prisma } from '@/lib/prisma';
 const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'] as const;
 
 function timeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return h * 60 + m;
-}
+    if (!time || typeof time !== 'string') return NaN;
+    const [h, m] = time.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return NaN;
+    return h * 60 + m;
+  }
 
 function minutesToTime(mins: number): string {
   const h = Math.floor(mins / 60);
@@ -74,12 +76,15 @@ export async function getAvailableSlots(doctorId: string, dateStr: string): Prom
   const slots: SlotInfo[] = [];
 
   for (const src of sources) {
-    const startMins = timeToMinutes(src.startTime);
-    const endMins = timeToMinutes(src.endTime);
-    const duration = src.slotDuration || 30;
-    const maxPatients = src.maxPatients || 10;
+      const startMins = timeToMinutes(src.startTime);
+      const endMins = timeToMinutes(src.endTime);
+      if (isNaN(startMins) || isNaN(endMins) || startMins >= endMins) continue;
 
-    for (let t = startMins; t + duration <= endMins; t += duration) {
+      let duration = Number(src.slotDuration) || 30;
+      if (duration <= 0) duration = 30;
+      const maxPatients = Number(src.maxPatients) || 10;
+
+      for (let t = startMins; t + duration <= endMins; t += duration) {
       const slotStart = minutesToTime(t);
       const slotEnd = minutesToTime(t + duration);
       const bookedCount = bookedTimes.filter(bt => bt === slotStart).length;

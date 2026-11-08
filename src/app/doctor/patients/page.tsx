@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Users, Search, Phone, Calendar, ArrowRight, Share2, CheckCircle } from "lucide-react";
 
 export default function DoctorPatientsPage() {
@@ -20,14 +21,13 @@ export default function DoctorPatientsPage() {
   }, []);
 
   const handleShare = () => {
-    // Copy the doctor's public profile link
     navigator.clipboard.writeText(window.location.origin + '/doctors');
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const filtered = patients.filter(p => 
-    p.name?.toLowerCase().includes(search.toLowerCase()) || 
+  const filtered = patients.filter(p =>
+    p.name?.toLowerCase().includes(search.toLowerCase()) ||
     p.phone?.includes(search)
   );
 
@@ -44,9 +44,9 @@ export default function DoctorPatientsPage() {
         </div>
         <div className="relative w-full md:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search by name or phone..." 
+          <input
+            type="text"
+            placeholder="Search by name or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm shadow-sm"
@@ -76,26 +76,25 @@ export default function DoctorPatientsPage() {
             {search ? "No patients match your search" : "No patients yet"}
           </h3>
           <p className="text-slate-500 text-sm mb-8 max-w-md">
-            {search 
+            {search
               ? "Try searching with a different name or phone number."
               : "You haven't received any patients yet. Share your profile link to start getting appointments."}
           </p>
-          
           {!search && (
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 onClick={handleShare}
                 className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition shadow-md"
               >
                 {copied ? <CheckCircle size={18} /> : <Share2 size={18} />}
                 {copied ? "Link Copied!" : "Share Profile Link"}
               </button>
-              <a 
+              <Link
                 href="/doctor"
                 className="flex items-center gap-2 bg-slate-100 text-slate-700 px-6 py-3 rounded-xl font-semibold hover:bg-slate-200 transition"
               >
                 Dashboard
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -104,17 +103,21 @@ export default function DoctorPatientsPage() {
           {filtered.map((patient) => (
             <div key={patient.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-100 transition group">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center text-slate-600 text-xl font-bold border-2 border-white shadow-sm">
-                  {patient.name?.charAt(0).toUpperCase() || 'P'}
+                <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center text-slate-600 text-xl font-bold border-2 border-white shadow-sm overflow-hidden">
+                  {patient.avatarUrl ? (
+                    <img src={patient.avatarUrl} alt={patient.name} className="w-full h-full object-cover" />
+                  ) : (
+                    patient.name?.charAt(0).toUpperCase() || 'P'
+                  )}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-lg group-hover:text-blue-600 transition">{patient.name || 'Unknown Patient'}</h3>
+                  <h3 className="font-bold text-slate-800 text-lg group-hover:text-blue-600 transition-colors">{patient.name || "Unknown Patient"}</h3>
                   <p className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md inline-block mt-1">
-                    ID: {patient.id.slice(-6).toUpperCase()}
+                    ID: {(patient.id || '').slice(-6).toUpperCase()}
                   </p>
                 </div>
               </div>
-              
+
               <div className="space-y-2 mb-4 bg-slate-50 p-3 rounded-xl">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Phone size={16} className="text-blue-500" />
@@ -126,9 +129,12 @@ export default function DoctorPatientsPage() {
                 </div>
               </div>
 
-              <button className="w-full py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 hover:text-blue-600 transition flex items-center justify-center gap-2">
+              <Link
+                href={`/doctor/patients/${patient.userId || patient.id}`}
+                className="w-full py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 hover:text-blue-600 transition flex items-center justify-center gap-2"
+              >
                 View History <ArrowRight size={16} />
-              </button>
+              </Link>
             </div>
           ))}
         </div>

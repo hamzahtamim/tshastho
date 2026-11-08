@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Clock, User, CheckCircle, XCircle, Search, DollarSign, History, RefreshCw } from "lucide-react";
+import { Calendar, Clock, User, CheckCircle, XCircle, Search, DollarSign, History, RefreshCw, Video } from "lucide-react";
 
 const TABS = [
   { k: "ALL", label: "All" },
@@ -26,11 +26,15 @@ export default function DoctorAppointmentsPage() {
 
   const fetchAppointments = async () => {
     try {
-      const res = await fetch('/api/doctor/my-appointments');
-      const data = await res.json();
+      const res = await fetch('/api/doctor/my-appointments', { credentials: 'include' });
+      const text = await res.text();
+      if (!text) {
+        throw new Error('Empty response from server (Timeout or Error)');
+      }
+      const data = JSON.parse(text);
       if (data.success) setAppointments(data.appointments || []);
     } catch (err) {
-      console.error(err);
+      console.error('[FETCH_APPT_ERROR]', err);
     } finally {
       setLoading(false);
     }
@@ -43,6 +47,7 @@ export default function DoctorAppointmentsPage() {
       await fetch('/api/doctor/appointments/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ appointmentId, status }),
       });
       fetchAppointments();

@@ -15,7 +15,8 @@ export async function POST(req: Request) {
       include: {
         doctor: {
           include: { user: true }
-        }
+        },
+        telemedicine: true
       },
       orderBy: { createdAt: 'desc' }
     });

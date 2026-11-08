@@ -1,37 +1,42 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 
-// বাংলা comment: Owner-এর dashboard chart data
-export async function POST(req: Request) {
+// GET request: Owner dashboard chart data
+export async function GET(req: Request) {
   const auth = await requireRole(['PHARMACY_OWNER', 'PHARMACY_STAFF', 'SUPER_ADMIN']);
   if (auth.error) return auth.error;
 
   try {
-    const { email, days = 30 } = await req.json();
+    // FIX: URL থেকে 'days' প্যারামিটার রিড করা হচ্ছে
+    const url = new URL(req.url);
+    const daysParam = url.searchParams.get('days');
+    const days = daysParam ? parseInt(daysParam) : 30;
 
-    const owner = await prisma.user.findFirst({ where: { email } });
-    if (!owner) return NextResponse.json({ message: "User not found" }, { status: 404 });
+    const user = await prisma.user.findUnique({ where: { id: auth.user.id } });
+    if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
 
-    const pharmacy = await prisma.pharmacy.findFirst({ where: { userId: owner.id } });
+    // ফার্মেসি খোঁজার লজিক (স্টাফ এবং ওনার দুইজনের জন্য)
+    let pharmacy = null;
+    if (user.parentPharmacyId) {
+      pharmacy = await prisma.pharmacy.findUnique({ where: { id: user.parentPharmacyId } });
+    }
+    if (!pharmacy) {
+      pharmacy = await prisma.pharmacy.findFirst({ where: { userId: user.id } });
+    }
     if (!pharmacy) return NextResponse.json({ message: "Pharmacy not found" }, { status: 404 });
 
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-    // ===== 1. Daily Sales (last N days) =====
+    // ===== 1. Daily Sales (Last N days) =====
     const orders = await prisma.order.findMany({
       where: {
         pharmacyId: pharmacy.id,
         createdAt: { gte: startDate },
         status: { not: "CANCELLED" },
       },
-      select: {
-        finalAmount: true,
-        totalAmount: true,
-        status: true,
-        createdAt: true,
-      },
+      select: { finalAmount: true, totalAmount: true, status: true, createdAt: true },
     });
 
     const dailyMap: Record<string, { sales: number; orders: number; profit: number }> = {};
@@ -76,15 +81,12 @@ export async function POST(req: Request) {
       .slice(0, 5);
 
     // ===== 3. Category-wise Sales =====
-    // Medicine model থেকে category ম্যাপ করি
     const medicineNames = [...new Set(orderItems.map((i) => i.medicineName).filter(Boolean))];
     const medicineInfo = await prisma.medicine.findMany({
-      where: {
-        pharmacyId: pharmacy.id,
-        name: { in: medicineNames as string[] },
-      },
+      where: { pharmacyId: pharmacy.id, name: { in: medicineNames as string[] } },
       select: { name: true, category: true },
     });
+    
     const nameToCategory: Record<string, string> = {};
     for (const m of medicineInfo) {
       nameToCategory[m.name] = m.category || "Other";
@@ -124,6 +126,7 @@ export async function POST(req: Request) {
         totalOrders: orders.length,
       },
     }, { status: 200 });
+
   } catch (error) {
     console.error("Charts error:", error);
     return NextResponse.json({ message: "Error", error: String(error) }, { status: 500 });
