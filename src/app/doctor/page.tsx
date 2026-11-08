@@ -93,7 +93,7 @@ export default function DoctorDashboard() {
           </div>
           <div>
             <h1 className="text-xl font-bold">{greeting}, {doctorName}!</h1>
-            <p className="text-blue-100 text-sm">{doctor.specialty}</p>
+            <p className="text-blue-100 text-sm">{user?.role === 'DOCTOR_STAFF' ? (user?.staffRole || 'Staff') : doctor.specialty}</p>
           </div>
         </div>
         

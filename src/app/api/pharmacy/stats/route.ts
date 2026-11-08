@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   const auth = await requireRole(['PHARMACY_OWNER', 'PHARMACY_STAFF', 'SUPER_ADMIN']);
   if (auth.error) return auth.error;
 

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth/guards';
@@ -96,6 +97,22 @@ export async function POST(req: Request) {
           patientNotes: data.notes,
         },
       });
+
+      // Create Telemedicine Session if slot type is ONLINE
+      if (data.slotType === 'ONLINE') {
+        await tx.telemedicineSession.create({
+          data: {
+            appointmentId: appointment.id,
+            doctorId: doctor.id,
+            patientId: user.id,
+            roomId: 'tsh-' + crypto.randomBytes(8).toString('hex'),
+            type: 'VIDEO',
+            status: 'SCHEDULED',
+            scheduledAt: new Date(`${data.date}T${data.time}:00+06:00`),
+          }
+        });
+      }
+  
 
       // Create Doctor Earning (Status PENDING initially)
       await tx.doctorEarning.create({

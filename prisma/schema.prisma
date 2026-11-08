@@ -41,7 +41,7 @@ model User {
   name                String?
   email               String        @unique
   phone               String?       @unique
-  password            String
+  password            String?
   role                Role
   status              AccountStatus @default(PENDING)
   isVerified          Boolean       @default(false)
@@ -140,6 +140,21 @@ model User {
   walletAccount            WalletAccount?                 @relation("UserWallet")
   sampleBatchesReceived    SampleBatch[]                  @relation("SampleBatchReceiver")
   sampleDistributionsGiven SampleDistribution[]           @relation("SampleDistributionGiver")
+  
+  
+  
+  
+  
+
+  agreedToTermsAt DateTime?
+  referredById    String?
+  referredBy      User?   @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals       User[]  @relation("UserReferrals")
+  myReferralCode  String? @unique
+  otpCode         String?
+  otpExpiry       DateTime?
+  resetToken      String?
+  resetTokenExpiry DateTime?
 }
 
 model Patient {
@@ -147,6 +162,7 @@ model Patient {
   userId      String    @unique
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   bloodGroup  String?
+  gender       String?
   dateOfBirth DateTime?
   address     String?
   createdAt   DateTime  @default(now())
@@ -497,6 +513,7 @@ model Appointment {
   @@index([doctorId, status])
   @@index([doctorId, date])
   @@index([date, status])
+
 }
 
 model Attendance {
@@ -1241,7 +1258,9 @@ enum PrescriptionStatus {
 
 enum PrescriptionSource {
   UPLOADED
-  DOCTOR_CREATED
+  MANUAL
+  ONLINE
+  PHARMACY
 }
 
 model Prescription {
@@ -1255,7 +1274,7 @@ model Prescription {
   hospitalName    String?
   prescriptionNo  String?
   issueDate       DateTime?
-  imageUrl        String
+  imageUrl        String?
   notes           String?
   diagnosis       String?
   source          PrescriptionSource @default(UPLOADED)
@@ -3682,7 +3701,6 @@ model TopUpRequest {
   updatedAt   DateTime @updatedAt
 }
 
-
 model DoctorExperience {
   id           String   @id @default(cuid())
   doctorId     String
@@ -3714,7 +3732,6 @@ model DoctorMembership {
   role         String?
   createdAt    DateTime @default(now())
 }
-
 
 model PayoutMethod {
   id            String         @id @default(cuid())

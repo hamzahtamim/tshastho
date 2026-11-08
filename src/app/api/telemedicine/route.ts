@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 const schema = z.object({
   appointmentId: z.string().optional(),
@@ -22,7 +23,7 @@ export async function GET() {
   const user = auth.user!;
 
   // If doctor, show doctor's sessions; if patient, show patient's sessions
-  const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+  const doctor = await getDoctorContext(user);
   const where = doctor ? { doctorId: doctor.id } : { patientId: user.id };
 
   const sessions = await prisma.telemedicineSession.findMany({

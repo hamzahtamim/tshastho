@@ -1,11 +1,16 @@
 "use client";
 
+import { LiveKitRoom, VideoConference } from '@livekit/components-react';
+import '@livekit/components-styles';
+
+
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft, Video, Phone, MessageSquare, Send, X,
-  Mic, MicOff, VideoOff, PhoneOff, Clock, User, CheckCircle
+  Mic, MicOff, VideoOff, PhoneOff, Clock, User, CheckCircle, FilePlus
 } from "lucide-react";
 
 export default function TelemedicineRoomPage() {
@@ -15,6 +20,11 @@ export default function TelemedicineRoomPage() {
   const sessionId = params.id as string;
 
   const [session, setSession] = useState<any>(null);
+  const [lkToken, setLkToken] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isLKConnected, setIsLKConnected] = useState(false);
+  const [connectTimeout, setConnectTimeout] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
   const [messages, setMessages] = useState<any[]>([]);
   const [isDoctor, setIsDoctor] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -25,6 +35,24 @@ export default function TelemedicineRoomPage() {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  
+  // Live Timer Effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (session?.status === 'ACTIVE') {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [session?.status]);
+
+  const formatDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   const load = async () => {
     const res = await fetch(`/api/telemedicine/${sessionId}`, { credentials: "include" });
@@ -60,6 +88,75 @@ export default function TelemedicineRoomPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  
+  // Poll session status every 5 seconds to update UI when other party joins/starts
+  useEffect(() => {
+    if (!user || !sessionId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/telemedicine/${sessionId}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.session) {
+            setSession((prev: any) => {
+              if (!prev) return data.session;
+              // শুধুমাত্র তখনই আপডেট করবে যখন স্ট্যাটাস বা জয়েন স্ট্যাটাস পরিবর্তন হবে
+              if (prev.status !== data.session.status || prev.doctorJoined !== data.session.doctorJoined || prev.patientJoined !== data.session.patientJoined) {
+                return data.session;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (e) {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [user, sessionId]);
+
+  
+  useEffect(() => {
+    if (!session) return;
+    
+    // showVideoFrame ভ্যারিয়েবলটি এখানেই ক্যালকুলেট করে নিচ্ছি
+    const hasJoined = isDoctor ? session.doctorJoined : session.patientJoined;
+    const isActive = session.status === "ACTIVE";
+    const showVideo = hasJoined || isActive || session.status === "WAITING" || (session.doctorJoined && session.patientJoined);
+    
+    if (!showVideo) return;
+
+    const fetchToken = async () => {
+      try {
+        const res = await fetch(`/api/telemedicine/${session.id}/token`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+        if (data.token) {
+          setLkToken(data.token);
+        } else {
+          console.error("Token API Error:", data);
+        }
+        }
+      } catch (err) {
+        console.error('Failed to fetch LiveKit token', err);
+      }
+    };
+
+    if (!lkToken && showVideoFrame) {
+      fetchToken();
+    }
+  }, [session?.id, user, isDoctor, lkToken]);
+
+  
+  useEffect(() => {
+    if (lkToken && !isLKConnected) {
+      const timer = setTimeout(() => {
+        if (!isLKConnected) setConnectTimeout(true);
+      }, 10000); // ১০ সেকেন্ড
+      return () => clearTimeout(timer);
+    } else {
+      setConnectTimeout(false);
+    }
+  }, [lkToken, isLKConnected]);
+
   const handleJoin = async () => {
     setActionLoading(true);
     await fetch(`/api/telemedicine/${sessionId}`, {
@@ -85,17 +182,27 @@ export default function TelemedicineRoomPage() {
     load();
   };
 
-  const handleEnd = async () => {
-    if (!confirm("End the consultation?")) return;
+  
+  
+
+const handleEnd = async (skipConfirm = false) => {
+    if (!skipConfirm && !confirm("Are you sure you want to end the consultation?")) return;
+    setLkToken(null); // Unmount LiveKitRoom immediately
+    setIsLKConnected(false);
     setActionLoading(true);
-    await fetch(`/api/telemedicine/${sessionId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ action: "END" }),
-    });
-    setActionLoading(false);
-    load();
+    try {
+      await fetch(`/api/telemedicine/${sessionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "END" }),
+      });
+      load(); // সেশন স্ট্যাটাস আপডেট করা
+    } catch (error) {
+      console.error("Failed to end session:", error);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleCancel = async () => {
@@ -143,31 +250,53 @@ export default function TelemedicineRoomPage() {
 
   const canJoin = ["SCHEDULED", "WAITING"].includes(session.status);
   const isActive = session.status === "ACTIVE";
+  const hasJoined = isDoctor ? session.doctorJoined : session.patientJoined;
+  const showJoinButtons = !hasJoined && !isActive && ["SCHEDULED", "WAITING"].includes(session.status);
+  const showVideoFrame = hasJoined || isActive || session.status === "WAITING" || (session.doctorJoined && session.patientJoined);
   const isDone = ["COMPLETED", "CANCELLED", "MISSED"].includes(session.status);
+
+  
+
 // PART2
 
-  const jitsiUrl = `https://meet.jit.si/${session.roomId}#userInfo.displayName=%22${encodeURIComponent(user?.name || "User")}%22&config.prejoinPageEnabled=false&config.startWithAudioMuted=${!micOn}&config.startWithVideoMuted=${!camOn}`;
+  
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col">
-      {/* Header */}
-      <div className="bg-slate-800 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+      {/* Premium Header */}
+      <div className="bg-[#0f172a]/95 backdrop-blur-md text-white px-4 py-3 flex items-center justify-between flex-shrink-0 border-b border-slate-700/50 shadow-lg z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 hover:bg-slate-700 rounded-lg">
+          <button onClick={() => router.back()} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-300 hover:text-white">
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <div className="font-bold text-sm">
-              {isDoctor ? session.patient?.name : `Dr. ${session.doctor?.user?.name}`}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold shadow-inner">
+              {(isDoctor ? session.patient?.name : session.doctor?.user?.name)?.charAt(0) || 'U'}
             </div>
-            <div className="text-xs text-slate-400">
-              {session.type} • Room: {session.roomId}
+            <div>
+              <div className="font-bold text-sm tracking-wide">
+                {isDoctor ? session.patient?.name : `Dr. ${session.doctor?.user?.name}`}
+              </div>
+              <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                <span>{session.type}</span>
+                <span className="w-1 h-1 rounded-full bg-slate-500"></span>
+                <span>{session.roomId.slice(0, 8)}...</span>
+              </div>
             </div>
           </div>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(session.status)}`}>
-          {session.status}
-        </span>
+        
+        <div className="flex items-center gap-3">
+          {session.status === 'ACTIVE' && (
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+              <span className="text-xs font-mono text-red-400 font-medium">{formatDuration(callDuration)}</span>
+            </div>
+          )}
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider ${statusColor(session.status)}`}>
+            {session.status}
+          </span>
+        </div>
       </div>
 
       {/* Tab Switch */}
@@ -190,7 +319,7 @@ export default function TelemedicineRoomPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {tab === "video" && (
           <div className="flex-1 flex flex-col">
-            {canJoin && (
+            {showJoinButtons && (
               <div className="flex-1 flex items-center justify-center p-6">
                 <div className="text-center max-w-md">
                   <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -218,14 +347,44 @@ export default function TelemedicineRoomPage() {
               </div>
             )}
 
-            {isActive && (
-              <div className="flex-1 relative">
-                <iframe
-                  src={jitsiUrl}
-                  allow="camera; microphone; fullscreen; display-capture; autoplay"
-                  className="w-full h-full border-0"
-                  title="Video Call"
-                />
+            {showVideoFrame && (
+              <div className="flex-1 relative w-full h-full min-h-[500px] bg-slate-900 overflow-hidden flex flex-col" data-lk-theme="default">
+                {connectionError ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+                      <X size={32} />
+                    </div>
+                    <h3 className="text-white text-lg font-bold mb-2">Connection Failed</h3>
+                    <p className="text-slate-400 text-sm mb-6 max-w-sm">{connectionError}</p>
+                    <button onClick={() => window.location.reload()} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-medium">
+                      Try Again
+                    </button>
+                  </div>
+                ) : !lkToken ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="font-medium animate-pulse">Connecting to secure video room...</p>
+                  </div>
+                ) : (
+                  <LiveKitRoom
+                    key={session.id}
+                    video={camOn}
+                    audio={micOn}
+                    token={lkToken}
+                    serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+                    onDisconnected={() => {
+                      setIsLKConnected(false);
+                      handleEnd(true);
+                    }}
+                    onError={(err) => {
+                      console.error("LiveKit Error:", err);
+                      setConnectionError(err.message || "Failed to connect to video room");
+                    }}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <VideoConference />
+                  </LiveKitRoom>
+                )}
               </div>
             )}
 
@@ -245,6 +404,14 @@ export default function TelemedicineRoomPage() {
                       <Clock size={12} /> Duration: {Math.floor(session.duration / 60)} min
                     </p>
                   )}
+
+              {isDoctor && session.status === "COMPLETED" && (
+                <div className="mt-6 animate-slide-up">
+                  <Link href={`/doctor/prescriptions/new?patientId=${session.patientId}&appointmentId=${session.appointmentId || ''}`} className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all w-full sm:w-auto">
+                    <FilePlus size={18} /> Write Prescription
+                  </Link>
+                </div>
+              )}
                 </div>
               </div>
             )}
@@ -297,7 +464,7 @@ export default function TelemedicineRoomPage() {
       </div>
 
       {/* Footer Controls */}
-      {!isDone && (
+      {!isDone && !showVideoFrame && (
         <div className="bg-slate-800 border-t border-slate-700 p-3 flex items-center justify-center gap-3 flex-shrink-0">
           {isActive && (
             <>
@@ -316,7 +483,7 @@ export default function TelemedicineRoomPage() {
             </>
           )}
           {isDoctor && isActive && (
-            <button onClick={handleEnd} disabled={actionLoading}
+            <button onClick={() => handleEnd()} disabled={actionLoading}
               className="bg-red-600 text-white px-6 py-3 rounded-full font-medium flex items-center gap-2 disabled:opacity-50">
               <PhoneOff size={18} /> End
             </button>

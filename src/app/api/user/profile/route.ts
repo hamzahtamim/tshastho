@@ -18,7 +18,15 @@ export async function GET() {
         status: true,
         isVerified: true,
         address: true,
+        avatarUrl: true,
+        myReferralCode: true, // Added avatar
         createdAt: true,
+        patientProfile: {
+          select: {
+            bloodGroup: true,
+            address: true,
+          }
+        }
       },
     });
 
@@ -39,14 +47,16 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, phone, address } = body;
+    const { name, phone, address, avatarUrl, bloodGroup } = body;
 
-    const updated = await prisma.user.update({
+    // ১. User টেবিলে আপডেট (নাম, ফোন, ঠিকানা, ছবি)
+    const updatedUser = await prisma.user.update({
       where: { id: auth.user!.id },
       data: {
         ...(name && { name }),
         ...(phone && { phone }),
         ...(address !== undefined && { address }),
+        ...(avatarUrl !== undefined && { avatarUrl }), // Avatar URL সেভ করা হচ্ছে
       },
       select: {
         id: true,
@@ -55,10 +65,27 @@ export async function PUT(req: Request) {
         phone: true,
         role: true,
         address: true,
+        avatarUrl: true,
       },
     });
 
-    return NextResponse.json({ success: true, user: updated });
+    // ২. Patient টেবিলে আপডেট বা তৈরি (Upsert)
+    if (bloodGroup !== undefined || address !== undefined) {
+      await prisma.patient.upsert({
+        where: { userId: auth.user!.id },
+        update: {
+          ...(bloodGroup !== undefined && { bloodGroup }),
+          ...(address !== undefined && { address }),
+        },
+        create: {
+          userId: auth.user!.id,
+          bloodGroup: bloodGroup || null,
+          address: address || null,
+        }
+      });
+    }
+
+    return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
     console.error('[USER_PROFILE_PUT]', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });

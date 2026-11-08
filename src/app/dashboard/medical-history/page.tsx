@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Heart, AlertTriangle, Pill, Users, Plus, X, Trash2, Activity
+  Heart, AlertTriangle, Pill, Users, Plus, X, Trash2, Activity,
+  Calendar, ShieldAlert
 } from "lucide-react";
 
 const ALLERGY_TYPES = ["DRUG", "FOOD", "ENVIRONMENTAL", "OTHER"];
@@ -26,10 +27,15 @@ export default function MedicalHistoryPage() {
 
   const load = async () => {
     setLoading(true);
-    const res = await fetch("/api/patients/me/medical-history", { credentials: "include" });
-    const d = await res.json();
-    setData(d);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/patients/me/medical-history", { credentials: "include" });
+      const d = await res.json();
+      setData(d);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { if (user) load(); }, [user]);
@@ -37,41 +43,50 @@ export default function MedicalHistoryPage() {
   const handleAdd = async (kind: string, payload: any) => {
     setSaving(true);
     setMessage("");
-    const res = await fetch("/api/patients/me/medical-history", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ kind, data: payload }),
-    });
-    const d = await res.json();
-    setSaving(false);
-    if (res.ok) {
-      setShowForm(false);
-      setAllergyForm({ allergen: "", type: "DRUG", severity: "MODERATE", reaction: "" });
-      setConditionForm({ name: "", type: "CONDITION", diagnosedDate: "", hospital: "", doctorName: "", notes: "", isChronic: false });
-      setMedicationForm({ medicineName: "", dosage: "", frequency: "", startDate: "", isOngoing: true, prescribedBy: "", notes: "" });
-      setFamilyForm({ relation: "", condition: "", notes: "" });
-      load();
-    } else {
-      setMessage(d.message || "Failed");
+    try {
+      const res = await fetch("/api/patients/me/medical-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ kind, data: payload }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setShowForm(false);
+        setAllergyForm({ allergen: "", type: "DRUG", severity: "MODERATE", reaction: "" });
+        setConditionForm({ name: "", type: "CONDITION", diagnosedDate: "", hospital: "", doctorName: "", notes: "", isChronic: false });
+        setMedicationForm({ medicineName: "", dosage: "", frequency: "", startDate: "", isOngoing: true, prescribedBy: "", notes: "" });
+        setFamilyForm({ relation: "", condition: "", notes: "" });
+        load();
+      } else {
+        setMessage(d.message || "Failed to add record");
+      }
+    } catch (err) {
+      setMessage("Network error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = async (id: string, kind: string) => {
     if (!confirm("Remove this record?")) return;
-    const res = await fetch(`/api/patients/me/medical-history?id=${id}&kind=${kind}`, {
-      method: "DELETE", credentials: "include",
-    });
-    if (res.ok) load();
+    try {
+      const res = await fetch(`/api/patients/me/medical-history?id=${id}&kind=${kind}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) load();
+    } catch (err) {
+      console.error(err);
+    }
   };
-// PART2
 
   const severityColor = (s: string) => {
     switch (s) {
-      case "LIFE_THREATENING": return "bg-red-100 text-red-700";
-      case "SEVERE": return "bg-orange-100 text-orange-700";
-      case "MODERATE": return "bg-amber-100 text-amber-700";
-      default: return "bg-yellow-100 text-yellow-700";
+      case "LIFE_THREATENING": return "bg-red-100 text-red-700 border-red-200";
+      case "SEVERE": return "bg-orange-100 text-orange-700 border-orange-200";
+      case "MODERATE": return "bg-amber-100 text-amber-700 border-amber-200";
+      default: return "bg-yellow-100 text-yellow-700 border-yellow-200";
     }
   };
 
@@ -82,180 +97,173 @@ export default function MedicalHistoryPage() {
     { k: "family", label: "Family", icon: Users, count: data?.familyHistory?.length || 0 },
   ];
 
-  if (loading) return <div className="p-6 text-center text-slate-500">Loading...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
-    <div className="p-4 max-w-3xl mx-auto pb-24">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Activity className="text-blue-600" size={22} />
-          <h1 className="text-xl font-bold text-slate-800">Medical History</h1>
+    <div className="min-h-screen bg-slate-50 pb-24">
+      <div className="max-w-3xl mx-auto p-4 sm:p-6">
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <Activity className="text-blue-600" size={26} /> Medical History
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">Secure & verified health records</p>
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all w-full sm:w-auto"
+          >
+            <Plus size={18} /> Add Record
+          </button>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium">
-          <Plus size={16} /> Add
-        </button>
-      </div>
 
-      <p className="text-xs text-slate-500 mb-4">
-        This history will be visible to doctors you grant access to.
-      </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {tabs.map((t) => {
+            const Icon = t.icon;
+            const isActive = tab === t.k;
+            return (
+              <button
+                key={t.k}
+                onClick={() => setTab(t.k as any)}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
+                  isActive 
+                    ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20 scale-105" 
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Icon size={20} className={isActive ? "mb-1.5 text-white" : "mb-1.5 text-slate-400"} />
+                <span className="text-xs font-bold">{t.label}</span>
+                {t.count > 0 && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5 ${isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"}`}>
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        {tabs.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button key={t.k} onClick={() => setTab(t.k as any)}
-              className={`flex flex-col items-center gap-1 p-3 rounded-2xl border transition ${
-                tab === t.k ? "bg-blue-600 text-white border-blue-600" : "bg-white border-slate-200 text-slate-700"
-              }`}>
-              <Icon size={18} />
-              <span className="text-[10px] font-medium">{t.label}</span>
-              {t.count > 0 && (
-                <span className={`text-[10px] font-bold ${tab === t.k ? "text-white" : "text-blue-600"}`}>
-                  {t.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Allergies */}
-      {tab === "allergies" && (
-        <div className="space-y-2">
-          {(data?.allergies || []).length === 0 ? (
-            <div className="bg-white p-6 text-center rounded-2xl text-slate-500 text-sm">
-              No allergies recorded.
-            </div>
-          ) : (
+        <div className="space-y-3">
+          
+          {tab === "allergies" && (
+            !data?.allergies || data.allergies.length === 0 ? <EmptyState text="No allergies recorded." /> :
             data.allergies.map((a: any) => (
-              <div key={a.id} className="bg-white p-3 rounded-2xl border border-slate-100 flex justify-between items-start gap-2">
-                <div className="flex-1 min-w-0">
+              <div key={a.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between group">
+                <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-slate-800">{a.allergen}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${severityColor(a.severity)}`}>
-                      {a.severity.replace("_", " ")}
+                    <h3 className="font-bold text-slate-800 text-base">{a.allergen}</h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${severityColor(a.severity)}`}>
+                      {a.severity.replace(/_/g, " ")}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500">{a.type}</div>
-                  {a.reaction && <div className="text-xs text-slate-600 mt-1">Reaction: {a.reaction}</div>}
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{a.type}</p>
+                  {a.reaction && (
+                    <div className="bg-slate-50 rounded-lg p-2.5 text-sm text-slate-700 border border-slate-100">
+                      <span className="font-semibold text-slate-500">Reaction:</span> {a.reaction}
+                    </div>
+                  )}
                 </div>
-                <button onClick={() => handleDelete(a.id, "ALLERGY")} className="text-red-500 p-1">
-                  <Trash2 size={14} />
+                <button onClick={() => handleDelete(a.id, "ALLERGY")} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors opacity-0 group-hover:opacity-100">
+                  <Trash2 size={18} />
                 </button>
               </div>
             ))
           )}
-        </div>
-      )}
 
-      {/* Conditions */}
-      {tab === "conditions" && (
-        <div className="space-y-2">
-          {(data?.conditions || []).length === 0 ? (
-            <div className="bg-white p-6 text-center rounded-2xl text-slate-500 text-sm">
-              No medical conditions recorded.
-            </div>
-          ) : (
+          {tab === "conditions" && (
+            !data?.conditions || data.conditions.length === 0 ? <EmptyState text="No medical conditions recorded." /> :
             data.conditions.map((c: any) => (
-              <div key={c.id} className="bg-white p-3 rounded-2xl border border-slate-100 flex justify-between items-start gap-2">
-                <div className="flex-1 min-w-0">
+              <div key={c.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between group">
+                <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-slate-800">{c.name}</span>
-                    {c.isChronic && <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700">Chronic</span>}
+                    <h3 className="font-bold text-slate-800 text-base">{c.name}</h3>
+                    {c.isChronic && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">Chronic</span>}
                   </div>
-                  <div className="text-xs text-slate-500">{c.type}</div>
-                  {c.diagnosedDate && <div className="text-xs text-slate-500">Diagnosed: {new Date(c.diagnosedDate).toLocaleDateString()}</div>}
-                  {c.hospital && <div className="text-xs text-slate-500">Hospital: {c.hospital}</div>}
-                  {c.notes && <div className="text-xs text-slate-600 mt-1">{c.notes}</div>}
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{c.type}</p>
+                  <div className="space-y-1 text-sm text-slate-600">
+                    {c.diagnosedDate && <p className="flex items-center gap-1.5"><Calendar size={14} className="text-slate-400"/> Diagnosed: {new Date(c.diagnosedDate).toLocaleDateString()}</p>}
+                    {c.hospital && <p className="flex items-center gap-1.5"><Activity size={14} className="text-slate-400"/> {c.hospital}</p>}
+                  </div>
                 </div>
-                <button onClick={() => handleDelete(c.id, "CONDITION")} className="text-red-500 p-1">
-                  <Trash2 size={14} />
+                <button onClick={() => handleDelete(c.id, "CONDITION")} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors opacity-0 group-hover:opacity-100">
+                  <Trash2 size={18} />
                 </button>
               </div>
             ))
           )}
-        </div>
-      )}
 
-      {/* Medications */}
-      {tab === "medications" && (
-        <div className="space-y-2">
-          {(data?.medications || []).length === 0 ? (
-            <div className="bg-white p-6 text-center rounded-2xl text-slate-500 text-sm">
-              No current medications.
-            </div>
-          ) : (
+          {tab === "medications" && (
+            !data?.medications || data.medications.length === 0 ? <EmptyState text="No current medications." /> :
             data.medications.map((m: any) => (
-              <div key={m.id} className="bg-white p-3 rounded-2xl border border-slate-100 flex justify-between items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-slate-800">{m.medicineName} {m.dosage && `— ${m.dosage}`}</div>
-                  {m.frequency && <div className="text-xs text-slate-500">{m.frequency}</div>}
-                  {m.prescribedBy && <div className="text-xs text-slate-500">Prescribed by: {m.prescribedBy}</div>}
-                  {m.startDate && <div className="text-xs text-slate-500">Since {new Date(m.startDate).toLocaleDateString()}</div>}
+              <div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between group">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base mb-1">
+                    {m.medicineName} {m.dosage && <span className="text-sm font-medium text-slate-500">({m.dosage})</span>}
+                  </h3>
+                  <div className="bg-slate-50 rounded-lg p-2.5 text-sm text-slate-700 border border-slate-100 inline-block">
+                    {m.frequency || "As directed"}
+                  </div>
+                  <div className="mt-2 space-y-1 text-xs text-slate-500">
+                    {m.startDate && <p>Started: {new Date(m.startDate).toLocaleDateString()}</p>}
+                    {m.prescribedBy && <p>Prescribed by: {m.prescribedBy}</p>}
+                  </div>
                 </div>
-                <button onClick={() => handleDelete(m.id, "MEDICATION")} className="text-red-500 p-1">
-                  <Trash2 size={14} />
+                <button onClick={() => handleDelete(m.id, "MEDICATION")} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors opacity-0 group-hover:opacity-100">
+                  <Trash2 size={18} />
                 </button>
               </div>
             ))
           )}
-        </div>
-      )}
 
-      {/* Family History */}
-      {tab === "family" && (
-        <div className="space-y-2">
-          {(data?.familyHistory || []).length === 0 ? (
-            <div className="bg-white p-6 text-center rounded-2xl text-slate-500 text-sm">
-              No family history recorded.
-            </div>
-          ) : (
+          {tab === "family" && (
+            !data?.familyHistory || data.familyHistory.length === 0 ? <EmptyState text="No family history recorded." /> :
             data.familyHistory.map((f: any) => (
-              <div key={f.id} className="bg-white p-3 rounded-2xl border border-slate-100 flex justify-between items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-slate-800">{f.relation} — {f.condition}</div>
-                  {f.notes && <div className="text-xs text-slate-600 mt-1">{f.notes}</div>}
+              <div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between group">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base mb-1">
+                    {f.relation} <span className="text-slate-400 font-normal text-sm mx-1">•</span> {f.condition}
+                  </h3>
+                  {f.notes && <p className="text-sm text-slate-600 mt-2 bg-slate-50 p-2 rounded-lg">{f.notes}</p>}
                 </div>
-                <button onClick={() => handleDelete(f.id, "FAMILY")} className="text-red-500 p-1">
-                  <Trash2 size={14} />
+                <button onClick={() => handleDelete(f.id, "FAMILY")} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors opacity-0 group-hover:opacity-100">
+                  <Trash2 size={18} />
                 </button>
               </div>
             ))
           )}
-        </div>
-      )}
-// PART3
 
-      {/* Form Modal */}
+        </div>
+      </div>
+
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white">
-              <h2 className="font-bold">Add {tab.charAt(0).toUpperCase() + tab.slice(1, -1)}</h2>
-              <button onClick={() => setShowForm(false)}><X size={20} /></button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up sm:animate-none">
+            <div className="flex justify-between items-center p-5 border-b border-slate-100 sticky top-0 bg-white/90 backdrop-blur-md z-10">
+              <h2 className="font-bold text-lg text-slate-800">Add New {tab.charAt(0).toUpperCase() + tab.slice(1, -1)}</h2>
+              <button onClick={() => setShowForm(false)} className="p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors">
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="p-5 space-y-4">
               {tab === "allergies" && (
                 <>
-                  <input value={allergyForm.allergen} onChange={(e) => setAllergyForm({ ...allergyForm, allergen: e.target.value })}
-                    placeholder="Allergen (e.g. Penicillin) *"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <select value={allergyForm.type} onChange={(e) => setAllergyForm({ ...allergyForm, type: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
-                    {ALLERGY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <select value={allergyForm.severity} onChange={(e) => setAllergyForm({ ...allergyForm, severity: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
-                    {SEVERITY.map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
-                  </select>
-                  <textarea value={allergyForm.reaction} onChange={(e) => setAllergyForm({ ...allergyForm, reaction: e.target.value })}
-                    rows={2} placeholder="Reaction (rash, swelling, etc.)"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <button onClick={() => handleAdd("ALLERGY", allergyForm)} disabled={saving || !allergyForm.allergen}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-50">
+                  <input value={allergyForm.allergen} onChange={(e) => setAllergyForm({ ...allergyForm, allergen: e.target.value })} placeholder="Allergen name (e.g. Penicillin) *" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-900" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <select value={allergyForm.type} onChange={(e) => setAllergyForm({ ...allergyForm, type: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900">
+                      {ALLERGY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <select value={allergyForm.severity} onChange={(e) => setAllergyForm({ ...allergyForm, severity: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900">
+                      {SEVERITY.map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
+                    </select>
+                  </div>
+                  <textarea value={allergyForm.reaction} onChange={(e) => setAllergyForm({ ...allergyForm, reaction: e.target.value })} rows={2} placeholder="Reaction (rash, swelling, etc.)" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-900 resize-none" />
+                  <button onClick={() => handleAdd("ALLERGY", allergyForm)} disabled={saving || !allergyForm.allergen} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20 mt-2">
                     {saving ? "Saving..." : "Add Allergy"}
                   </button>
                 </>
@@ -263,31 +271,19 @@ export default function MedicalHistoryPage() {
 
               {tab === "conditions" && (
                 <>
-                  <input value={conditionForm.name} onChange={(e) => setConditionForm({ ...conditionForm, name: e.target.value })}
-                    placeholder="Condition name *"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <select value={conditionForm.type} onChange={(e) => setConditionForm({ ...conditionForm, type: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
-                    {CONDITION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <input type="date" value={conditionForm.diagnosedDate}
-                    onChange={(e) => setConditionForm({ ...conditionForm, diagnosedDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <input value={conditionForm.hospital} onChange={(e) => setConditionForm({ ...conditionForm, hospital: e.target.value })}
-                    placeholder="Hospital (optional)"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <input value={conditionForm.doctorName} onChange={(e) => setConditionForm({ ...conditionForm, doctorName: e.target.value })}
-                    placeholder="Doctor name (optional)"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <textarea value={conditionForm.notes} onChange={(e) => setConditionForm({ ...conditionForm, notes: e.target.value })}
-                    rows={2} placeholder="Notes" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={conditionForm.isChronic}
-                      onChange={(e) => setConditionForm({ ...conditionForm, isChronic: e.target.checked })} />
-                    Chronic condition
+                  <input value={conditionForm.name} onChange={(e) => setConditionForm({ ...conditionForm, name: e.target.value })} placeholder="Condition name *" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-900" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <select value={conditionForm.type} onChange={(e) => setConditionForm({ ...conditionForm, type: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900">
+                      {CONDITION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <input type="date" value={conditionForm.diagnosedDate} onChange={(e) => setConditionForm({ ...conditionForm, diagnosedDate: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900" />
+                  </div>
+                  <input value={conditionForm.hospital} onChange={(e) => setConditionForm({ ...conditionForm, hospital: e.target.value })} placeholder="Hospital (optional)" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900" />
+                  <label className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+                    <input type="checkbox" checked={conditionForm.isChronic} onChange={(e) => setConditionForm({ ...conditionForm, isChronic: e.target.checked })} className="w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm font-semibold text-slate-700">This is a chronic condition</span>
                   </label>
-                  <button onClick={() => handleAdd("CONDITION", conditionForm)} disabled={saving || !conditionForm.name}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-50">
+                  <button onClick={() => handleAdd("CONDITION", conditionForm)} disabled={saving || !conditionForm.name} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20 mt-2">
                     {saving ? "Saving..." : "Add Condition"}
                   </button>
                 </>
@@ -295,30 +291,17 @@ export default function MedicalHistoryPage() {
 
               {tab === "medications" && (
                 <>
-                  <input value={medicationForm.medicineName} onChange={(e) => setMedicationForm({ ...medicationForm, medicineName: e.target.value })}
-                    placeholder="Medicine name *"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input value={medicationForm.dosage} onChange={(e) => setMedicationForm({ ...medicationForm, dosage: e.target.value })}
-                      placeholder="Dosage (500mg)"
-                      className="px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                    <input value={medicationForm.frequency} onChange={(e) => setMedicationForm({ ...medicationForm, frequency: e.target.value })}
-                      placeholder="Frequency (1+0+1)"
-                      className="px-3 py-2 border border-slate-200 rounded-xl text-sm" />
+                  <input value={medicationForm.medicineName} onChange={(e) => setMedicationForm({ ...medicationForm, medicineName: e.target.value })} placeholder="Medicine name *" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-900" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input value={medicationForm.dosage} onChange={(e) => setMedicationForm({ ...medicationForm, dosage: e.target.value })} placeholder="Dosage (500mg)" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900" />
+                    <input value={medicationForm.frequency} onChange={(e) => setMedicationForm({ ...medicationForm, frequency: e.target.value })} placeholder="Frequency (1+0+1)" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900" />
                   </div>
-                  <input type="date" value={medicationForm.startDate}
-                    onChange={(e) => setMedicationForm({ ...medicationForm, startDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <input value={medicationForm.prescribedBy} onChange={(e) => setMedicationForm({ ...medicationForm, prescribedBy: e.target.value })}
-                    placeholder="Prescribed by (optional)"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={medicationForm.isOngoing}
-                      onChange={(e) => setMedicationForm({ ...medicationForm, isOngoing: e.target.checked })} />
-                    Currently taking
+                  <input type="date" value={medicationForm.startDate} onChange={(e) => setMedicationForm({ ...medicationForm, startDate: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium text-slate-900" />
+                  <label className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+                    <input type="checkbox" checked={medicationForm.isOngoing} onChange={(e) => setMedicationForm({ ...medicationForm, isOngoing: e.target.checked })} className="w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm font-semibold text-slate-700">Currently taking this medication</span>
                   </label>
-                  <button onClick={() => handleAdd("MEDICATION", medicationForm)} disabled={saving || !medicationForm.medicineName}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-50">
+                  <button onClick={() => handleAdd("MEDICATION", medicationForm)} disabled={saving || !medicationForm.medicineName} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20 mt-2">
                     {saving ? "Saving..." : "Add Medication"}
                   </button>
                 </>
@@ -326,27 +309,31 @@ export default function MedicalHistoryPage() {
 
               {tab === "family" && (
                 <>
-                  <input value={familyForm.relation} onChange={(e) => setFamilyForm({ ...familyForm, relation: e.target.value })}
-                    placeholder="Relation (Father, Mother, etc.) *"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <input value={familyForm.condition} onChange={(e) => setFamilyForm({ ...familyForm, condition: e.target.value })}
-                    placeholder="Condition (Diabetes, etc.) *"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <textarea value={familyForm.notes} onChange={(e) => setFamilyForm({ ...familyForm, notes: e.target.value })}
-                    rows={2} placeholder="Notes" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                  <button onClick={() => handleAdd("FAMILY", familyForm)}
-                    disabled={saving || !familyForm.relation || !familyForm.condition}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-50">
+                  <input value={familyForm.relation} onChange={(e) => setFamilyForm({ ...familyForm, relation: e.target.value })} placeholder="Relation (Father, Mother, etc.) *" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-900" />
+                  <input value={familyForm.condition} onChange={(e) => setFamilyForm({ ...familyForm, condition: e.target.value })} placeholder="Condition (Diabetes, etc.) *" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-900" />
+                  <textarea value={familyForm.notes} onChange={(e) => setFamilyForm({ ...familyForm, notes: e.target.value })} rows={2} placeholder="Additional notes..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-900 resize-none" />
+                  <button onClick={() => handleAdd("FAMILY", familyForm)} disabled={saving || !familyForm.relation || !familyForm.condition} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20 mt-2">
                     {saving ? "Saving..." : "Add Family History"}
                   </button>
                 </>
               )}
 
-              {message && <p className="text-sm text-red-600">{message}</p>}
+              {message && <p className="text-sm text-center text-red-600 bg-red-50 p-3 rounded-lg font-medium">{message}</p>}
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center shadow-sm">
+      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <ShieldAlert className="text-slate-300" size={32} />
+      </div>
+      <p className="text-slate-500 font-medium">{text}</p>
     </div>
   );
 }

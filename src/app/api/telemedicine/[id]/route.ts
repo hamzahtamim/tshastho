@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth/guards';
 import { errorResponse, ErrorCodes } from '@/lib/errors';
 import { z } from 'zod';
+import { getDoctorContext } from '@/lib/auth/doctor-context';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
@@ -20,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   if (!session) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Session not found', 404);
 
-  const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+  const doctor = await getDoctorContext(user);
   const isDoctor = doctor && session.doctorId === doctor.id;
   const isPatient = session.patientId === user.id;
 
@@ -28,11 +29,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return errorResponse(ErrorCodes.FORBIDDEN, 'Not authorized', 403);
   }
 
-  const messages = await prisma.telemedicineMessage.findMany({
-    where: { sessionId: id },
-    orderBy: { createdAt: 'asc' },
-    take: 100,
-  });
+  const messages: any[] = [];
 
   return NextResponse.json({ success: true, session, messages, isDoctor, isPatient });
 }
@@ -54,7 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const session = await prisma.telemedicineSession.findUnique({ where: { id } });
     if (!session) return errorResponse(ErrorCodes.RESOURCE_NOT_FOUND, 'Not found', 404);
 
-    const doctor = await prisma.doctor.findFirst({ where: { userId: user.id } });
+    const doctor = await getDoctorContext(user);
     const isDoctor = doctor && session.doctorId === doctor.id;
     const isPatient = session.patientId === user.id;
 
